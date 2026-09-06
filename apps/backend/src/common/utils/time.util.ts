@@ -12,3 +12,11 @@ export function isOverlap(
 ): boolean {
   return mulaiBaru < selesaiExisting && selesaiBaru > mulaiExisting;
 }
+
+export function generateKodeBooking(tanggal: Date, id: number): string {
+  const yyyy = tanggal.getFullYear();
+  const mm = String(tanggal.getMonth() + 1).padStart(2, '0');
+  const dd = String(tanggal.getDate()).padStart(2, '0');
+  const idPadded = String(id).padStart(4, '0');
+  return `BOOK-${yyyy}${mm}${dd}-${idPadded}`;
+}

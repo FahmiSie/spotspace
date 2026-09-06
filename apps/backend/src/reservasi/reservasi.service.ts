@@ -1,0 +1,258 @@
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateReservasiDto } from './dto/create-reservasi.dto';
+import { HistoryQueryDto } from './dto/history-query.dto';
+import { hitungJamSelesai, isOverlap, generateKodeBooking } from '../common/utils/time.util';
+import * as QRCode from 'qrcode';
+import { Diskon } from '@prisma/client';
+
+@Injectable()
+export class ReservasiService {
+  constructor(private prisma: PrismaService) {}
+
+  async create(memberId: number, dto: CreateReservasiDto) {
+    const space = await this.prisma.space.findUnique({ where: { id: dto.id_space } });
+    if (!space) throw new NotFoundException('Space tidak ditemukan');
+
+    const jamSelesai = hitungJamSelesai(dto.jam_mulai, dto.durasi_jam);
+    const tanggal = new Date(dto.tanggal_reservasi);
+
+    // Cek overlap (aturan bisnis #1)
+    const existingReservasi = await this.prisma.reservasi.findMany({
+      where: {
+        status: { not: 'dibatalkan' },
+        tanggalReservasi: tanggal,
+        detail: { spaceId: dto.id_space },
+      },
+    });
+    const bentrok = existingReservasi.some((r) =>
+      isOverlap(dto.jam_mulai, jamSelesai, r.jamMulai, r.jamSelesai),
+    );
+    if (bentrok) {
+      throw new BadRequestException('Space tidak tersedia pada tanggal dan rentang jam tersebut!');
+    }
+
+    // Validasi promo (opsional) — aturan bisnis #4
+    let diskon: Diskon | null = null;
+    const kodePromo = dto.kode_promo;
+    if (dto.id_diskon) {
+      diskon = await this.prisma.diskon.findUnique({ where: { id: dto.id_diskon } });
+    } else if (kodePromo) {
+      diskon = await this.prisma.diskon.findUnique({ where: { namaDiskon: kodePromo } });
+    }
+
+    if (diskon) {
+      const now = new Date();
+      const valid = diskon.tanggalAwal <= now && diskon.tanggalAkhir >= now;
+      if (!valid) diskon = null; // promo kadaluarsa -> reservasi tetap lanjut tanpa promo
+    }
+
+    // Perhitungan harga (aturan bisnis #3)
+    const totalHargaAwal = space.hargaPerJam * dto.durasi_jam;
+    const potonganDiskon = diskon ? totalHargaAwal * (diskon.persentaseDiskon / 100) : 0;
+    const totalBayar = totalHargaAwal - potonganDiskon;
+
+    // Transaksi: buat reservasi + detail sekaligus, generate kode booking dari id yang baru dibuat
+    const result = await this.prisma.$transaction(async (tx) => {
+      const reservasi = await tx.reservasi.create({
+        data: {
+          kodeBooking: 'TEMP', // placeholder, di-update setelah tahu id
+          memberId,
+          tanggalReservasi: tanggal,
+          jamMulai: dto.jam_mulai,
+          jamSelesai,
+          durasiJam: dto.durasi_jam,
+          status: 'belum_dikonfirm',
+        },
+      });
+
+      const kodeBooking = generateKodeBooking(tanggal, reservasi.id);
+
+      const updated = await tx.reservasi.update({
+        where: { id: reservasi.id },
+        data: { kodeBooking },
+      });
+
+      const detail = await tx.detailReservasi.create({
+        data: {
+          reservasiId: reservasi.id,
+          spaceId: dto.id_space,
+          diskonId: diskon?.id ?? null,
+          hargaPerJam: space.hargaPerJam,
+          totalHargaAwal,
+          potonganDiskon,
+          totalBayar,
+        },
+      });
+
+      return { ...updated, detail };
+    });
+
+    return {
+      id: result.id,
+      kode_booking: result.kodeBooking,
+      id_member: memberId,
+      id_space: dto.id_space,
+      id_diskon: diskon?.id ?? null,
+      tanggal_reservasi: dto.tanggal_reservasi,
+      jam_mulai: dto.jam_mulai,
+      jam_selesai: jamSelesai,
+      durasi_jam: dto.durasi_jam,
+      harga_per_jam: space.hargaPerJam,
+      total_harga_awal: totalHargaAwal,
+      potongan_diskon: potonganDiskon,
+      total_bayar: totalBayar,
+      status: 'belum_dikonfirm',
+    };
+  }
+
+  async findMy(memberId: number) {
+    const list = await this.prisma.reservasi.findMany({
+      where: { memberId },
+      include: { detail: { include: { space: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return list.map((r) => ({
+      id: r.id,
+      kode_booking: r.kodeBooking,
+      tanggal_reservasi: r.tanggalReservasi,
+      jam_mulai: r.jamMulai,
+      jam_selesai: r.jamSelesai,
+      durasi_jam: r.durasiJam,
+      total_bayar: r.detail?.totalBayar,
+      status: r.status,
+      space: r.detail?.space
+        ? { id: r.detail.space.id, nama_space: r.detail.space.namaSpace, tipe: r.detail.space.tipe }
+        : null,
+    }));
+  }
+
+  async findHistory(memberId: number, query: HistoryQueryDto) {
+    const now = new Date();
+    const month = query.month ?? now.getMonth() + 1;
+    const year = query.year ?? now.getFullYear();
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 1);
+
+    const list = await this.prisma.reservasi.findMany({
+      where: {
+        memberId,
+        tanggalReservasi: { gte: start, lt: end },
+      },
+      include: { detail: { include: { space: true } } },
+    });
+
+    const totalPengeluaran = list.reduce((sum, r) => sum + (r.detail?.totalBayar ?? 0), 0);
+
+    return {
+      month,
+      year,
+      total_reservasi: list.length,
+      total_pengeluaran: totalPengeluaran,
+      items: list.map((r) => ({
+        id: r.id,
+        kode_booking: r.kodeBooking,
+        tanggal_reservasi: r.tanggalReservasi,
+        jam_mulai: r.jamMulai,
+        jam_selesai: r.jamSelesai,
+        durasi_jam: r.durasiJam,
+        total_bayar: r.detail?.totalBayar,
+        status: r.status,
+        space_name: r.detail?.space?.namaSpace,
+      })),
+    };
+  }
+
+  private async findOneRaw(id: number) {
+    const r = await this.prisma.reservasi.findUnique({
+      where: { id },
+      include: {
+        member: true,
+        detail: { include: { space: { include: { owner: true } }, diskon: true } },
+      },
+    });
+    if (!r) throw new NotFoundException('Reservasi dengan ID tersebut tidak ditemukan');
+    return r;
+  }
+
+  async findOne(id: number, requester: { role: string; memberId: number | null }) {
+    const r = await this.findOneRaw(id);
+    if (requester.role === 'member' && r.memberId !== requester.memberId) {
+      throw new ForbiddenException('Anda tidak memiliki akses ke reservasi ini');
+    }
+    return {
+      id: r.id,
+      kode_booking: r.kodeBooking,
+      id_member: r.memberId,
+      id_space: r.detail?.spaceId,
+      tanggal_reservasi: r.tanggalReservasi,
+      jam_mulai: r.jamMulai,
+      jam_selesai: r.jamSelesai,
+      durasi_jam: r.durasiJam,
+      total_bayar: r.detail?.totalBayar,
+      status: r.status,
+      member: { nama_member: r.member.namaMember, telp: r.member.telp },
+      space: { nama_space: r.detail?.space.namaSpace, harga_per_jam: r.detail?.space.hargaPerJam },
+    };
+  }
+
+  async cancel(id: number, memberId: number) {
+    const r = await this.findOneRaw(id);
+    if (r.memberId !== memberId) {
+      throw new ForbiddenException('Anda tidak memiliki akses untuk membatalkan reservasi ini');
+    }
+    if (!['belum_dikonfirm', 'disetujui'].includes(r.status)) {
+      throw new BadRequestException('Reservasi ini tidak bisa dibatalkan pada status saat ini');
+    }
+    const updated = await this.prisma.reservasi.update({
+      where: { id },
+      data: { status: 'dibatalkan' },
+    });
+    return { id: updated.id, status: updated.status, updated_at: updated.updatedAt };
+  }
+
+  async getETicket(id: number, requester: { role: string; memberId: number | null }) {
+    const r = await this.findOneRaw(id);
+    if (requester.role === 'member' && r.memberId !== requester.memberId) {
+      throw new ForbiddenException('Anda tidak memiliki akses ke e-ticket ini');
+    }
+
+    const qrPayload = `VERIFY-RESERVASI-${r.id}`;
+    const qrCodeDataUrl = await QRCode.toDataURL(qrPayload);
+
+    return {
+      e_ticket_number: `TICKET-${r.detail?.space.owner.namaCoworking.replace(/\s+/g, '').toUpperCase()}-${r.kodeBooking.replace('BOOK-', '')}`,
+      kode_booking: r.kodeBooking,
+      coworking_space: {
+        nama: r.detail?.space.owner.namaCoworking,
+        telepon: r.detail?.space.owner.telp,
+      },
+      member: {
+        nama: r.member.namaMember,
+        instansi: r.member.instansi,
+        telp: r.member.telp,
+      },
+      space: {
+        nama: r.detail?.space.namaSpace,
+        tipe: r.detail?.space.tipe,
+        harga_per_jam: r.detail?.space.hargaPerJam,
+      },
+      jadwal: {
+        tanggal: r.tanggalReservasi,
+        jam_mulai: r.jamMulai,
+        jam_selesai: r.jamSelesai,
+        durasi: `${r.durasiJam} Jam`,
+      },
+      rincian_pembayaran: {
+        tarif_kotor: r.detail?.totalHargaAwal,
+        diskon_promo: r.detail?.diskon
+          ? `${r.detail.diskon.persentaseDiskon}% (${r.detail.diskon.namaDiskon})`
+          : null,
+        potongan: r.detail?.potonganDiskon,
+        total_dibayar: r.detail?.totalBayar,
+      },
+      status_reservasi: r.status,
+      qr_code: qrCodeDataUrl,
+    };
+  }
+}
