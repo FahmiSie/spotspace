@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: spotspace-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spotspace
+      POSTGRES_PASSWORD: spotspace_dev_password
+      POSTGRES_DB: spotspace_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - spotspace_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spotspace -d spotspace_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  spotspace_pgdata:

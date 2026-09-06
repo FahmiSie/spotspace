@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Prisma
+apps/backend/prisma/*.db
+apps/backend/prisma/*.db-journal
+
+# Storage & Cache
+uploads/*
+!uploads/.gitkeep
+.DS_Store
+*.log
+
+# AI Tool Leftovers
+.agents/
+.claude/
+.cursor/
+.devin/

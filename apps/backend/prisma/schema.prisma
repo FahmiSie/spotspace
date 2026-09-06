@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  member
+  admin_space
+}
+
+enum TipeSpace {
+  desk
+  meeting_room
+  private_office
+}
+
+enum StatusReservasi {
+  belum_dikonfirm
+  disetujui
+  aktif
+  selesai
+  dibatalkan
+}
+
+model User {
+  id         Int         @id @default(autoincrement())
+  username   String      @unique
+  password   String
+  role       Role
+  member     Member?
+  spaceOwner SpaceOwner?
+  createdAt  DateTime    @default(now())
+
+  @@map("users")
+}
+
+model Member {
+  id         Int         @id @default(autoincrement())
+  userId     Int         @unique
+  user       User        @relation(fields: [userId], references: [id])
+  namaMember String
+  instansi   String?
+  alamat     String
+  telp       String
+  foto       String?
+  reservasi  Reservasi[]
+
+  @@map("member")
+}
+
+model SpaceOwner {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @unique
+  user          User     @relation(fields: [userId], references: [id])
+  namaCoworking String
+  namaPemilik   String
+  telp          String
+  deskripsi     String?
+  spaces        Space[]
+
+  @@map("space_owner")
+}
+
+model Space {
+  id              Int               @id @default(autoincrement())
+  namaSpace       String
+  hargaPerJam     Float
+  tipe            TipeSpace
+  kapasitas       Int
+  deskripsi       String?
+  foto            String?
+  ownerId         Int
+  owner           SpaceOwner        @relation(fields: [ownerId], references: [id])
+  detailReservasi DetailReservasi[]
+  createdAt       DateTime          @default(now())
+
+  @@map("space")
+}
+
+model Diskon {
+  id               Int               @id @default(autoincrement())
+  namaDiskon       String            @unique
+  persentaseDiskon Float
+  tanggalAwal      DateTime
+  tanggalAkhir     DateTime
+  detailReservasi  DetailReservasi[]
+
+  @@map("diskon")
+}
+
+model Reservasi {
+  id               Int              @id @default(autoincrement())
+  kodeBooking      String           @unique
+  memberId         Int
+  member           Member           @relation(fields: [memberId], references: [id])
+  tanggalReservasi DateTime         @db.Date
+  jamMulai         String
+  jamSelesai       String
+  durasiJam        Int
+  status           StatusReservasi  @default(belum_dikonfirm)
+  checkInTime      DateTime?
+  checkOutTime     DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  detail           DetailReservasi?
+
+  @@map("reservasi")
+}
+
+model DetailReservasi {
+  id             Int       @id @default(autoincrement())
+  reservasiId    Int       @unique
+  reservasi      Reservasi @relation(fields: [reservasiId], references: [id])
+  spaceId        Int
+  space          Space     @relation(fields: [spaceId], references: [id])
+  diskonId       Int?
+  diskon         Diskon?   @relation(fields: [diskonId], references: [id])
+  hargaPerJam    Float
+  totalHargaAwal Float
+  potonganDiskon Float     @default(0)
+  totalBayar     Float
+
+  @@map("detail_reservasi")
+}
