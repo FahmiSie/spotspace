@@ -70,7 +70,7 @@ export class AuthService {
           create: {
             namaCoworking: dto.namaCoworking,
             namaPemilik: dto.namaPemilik,
-            telp: dto.telp,
+            telp: dto.telpon,
           },
         },
       },

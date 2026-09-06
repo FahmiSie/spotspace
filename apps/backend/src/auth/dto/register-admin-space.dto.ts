@@ -19,5 +19,5 @@ export class RegisterAdminSpaceDto {
 
   @IsString()
   @IsNotEmpty()
-  telp: string;
+  telpon: string;
 }
