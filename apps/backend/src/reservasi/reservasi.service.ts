@@ -5,6 +5,7 @@ import { HistoryQueryDto } from './dto/history-query.dto';
 import { hitungJamSelesai, isOverlap, generateKodeBooking } from '../common/utils/time.util';
 import * as QRCode from 'qrcode';
 import { Diskon } from '@prisma/client';
+import { AdminReservasiQueryDto } from './dto/admin-query.dto';
 
 @Injectable()
 export class ReservasiService {
@@ -255,4 +256,101 @@ export class ReservasiService {
       qr_code: qrCodeDataUrl,
     };
   }
+  async findAllForAdmin(spaceOwnerId: number, query: AdminReservasiQueryDto) {
+  const where: any = {
+    detail: { space: { ownerId: spaceOwnerId } },
+  };
+
+  if (query.status) where.status = query.status;
+  if (query.id_space) where.detail = { ...where.detail, spaceId: query.id_space };
+  if (query.tanggal) {
+    where.tanggalReservasi = new Date(query.tanggal);
+  } else if (query.month || query.year) {
+    const now = new Date();
+    const month = query.month ?? now.getMonth() + 1;
+    const year = query.year ?? now.getFullYear();
+    where.tanggalReservasi = {
+      gte: new Date(year, month - 1, 1),
+      lt: new Date(year, month, 1),
+    };
+  }
+
+  const list = await this.prisma.reservasi.findMany({
+    where,
+    include: { member: true, detail: { include: { space: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return list.map((r) => ({
+    id: r.id,
+    kode_booking: r.kodeBooking,
+    tanggal_reservasi: r.tanggalReservasi,
+    jam_mulai: r.jamMulai,
+    jam_selesai: r.jamSelesai,
+    durasi_jam: r.durasiJam,
+    total_harga_awal: r.detail?.totalHargaAwal,
+    potongan_diskon: r.detail?.potonganDiskon,
+    total_bayar: r.detail?.totalBayar,
+    status: r.status,
+    member: { id: r.member.id, nama_member: r.member.namaMember, telp: r.member.telp },
+    space: r.detail?.space
+      ? { id: r.detail.space.id, nama_space: r.detail.space.namaSpace, tipe: r.detail.space.tipe }
+      : null,
+  }));
+}
+
+async updateStatus(id: number, spaceOwnerId: number, status: string) {
+  const r = await this.findOneRaw(id);
+  this.assertOwnership(r, spaceOwnerId);
+
+  const transisiValid: Record<string, string[]> = {
+    belum_dikonfirm: ['disetujui', 'dibatalkan'],
+    disetujui: ['dibatalkan'],
+  };
+  if (!transisiValid[r.status]?.includes(status)) {
+    throw new BadRequestException(`Tidak bisa mengubah status dari ${r.status} ke ${status}`);
+  }
+
+  const updated = await this.prisma.reservasi.update({
+    where: { id },
+    data: { status: status as any },
+  });
+  return { id: updated.id, status: updated.status, updated_at: updated.updatedAt };
+}
+
+async checkIn(id: number, spaceOwnerId: number) {
+  const r = await this.findOneRaw(id);
+  this.assertOwnership(r, spaceOwnerId);
+
+  if (r.status !== 'disetujui') {
+    throw new BadRequestException('Reservasi harus berstatus "disetujui" sebelum check-in');
+  }
+
+  const updated = await this.prisma.reservasi.update({
+    where: { id },
+    data: { status: 'aktif', checkInTime: new Date() },
+  });
+  return { id: updated.id, status: updated.status, check_in_time: updated.checkInTime };
+}
+
+async checkOut(id: number, spaceOwnerId: number) {
+  const r = await this.findOneRaw(id);
+  this.assertOwnership(r, spaceOwnerId);
+
+  if (r.status !== 'aktif') {
+    throw new BadRequestException('Reservasi harus berstatus "aktif" sebelum check-out');
+  }
+
+  const updated = await this.prisma.reservasi.update({
+    where: { id },
+    data: { status: 'selesai', checkOutTime: new Date() },
+  });
+  return { id: updated.id, status: updated.status, check_out_time: updated.checkOutTime };
+}
+
+private assertOwnership(r: any, spaceOwnerId: number) {
+  if (r.detail?.space?.ownerId !== spaceOwnerId) {
+    throw new ForbiddenException('Anda tidak memiliki akses ke reservasi ini');
+  }
+}
 }
