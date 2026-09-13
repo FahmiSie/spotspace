@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ParseIntPipe, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { DiskonService } from './diskon.service';
 import { CreateDiskonDto } from './dto/create-diskon.dto';
@@ -17,6 +17,7 @@ export class DiskonController {
   }
 
   @Post('diskon/check')
+  @HttpCode(HttpStatus.OK)
   checkPromo(@Body() dto: CheckPromoDto) {
     return this.diskonService.checkPromo(dto);
   }

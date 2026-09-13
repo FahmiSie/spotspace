@@ -12,4 +12,7 @@ export class UpdateCoworkingProfileDto {
 
   @IsString() @IsOptional()
   deskripsi?: string;
+
+  @IsString() @IsOptional()
+  foto?: string;
 }

@@ -6,13 +6,14 @@ import { hitungJamSelesai, isOverlap, generateKodeBooking } from '../common/util
 import * as QRCode from 'qrcode';
 import { Diskon } from '@prisma/client';
 import { AdminReservasiQueryDto } from './dto/admin-query.dto';
+import { NotifikasiService } from '../notifikasi/notifikasi.service';
 
 @Injectable()
 export class ReservasiService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private notifikasiService: NotifikasiService) {}
 
   async create(memberId: number, dto: CreateReservasiDto) {
-    const space = await this.prisma.space.findUnique({ where: { id: dto.id_space } });
+    const space = await this.prisma.space.findUnique({ where: { id: dto.id_space }, include: { owner: true } });
     if (!space) throw new NotFoundException('Space tidak ditemukan');
 
     const jamSelesai = hitungJamSelesai(dto.jam_mulai, dto.durasi_jam);
@@ -89,7 +90,7 @@ export class ReservasiService {
       return { ...updated, detail };
     });
 
-    return {
+    const response = {
       id: result.id,
       kode_booking: result.kodeBooking,
       id_member: memberId,
@@ -105,6 +106,17 @@ export class ReservasiService {
       total_bayar: totalBayar,
       status: 'belum_dikonfirm',
     };
+
+    // Trigger notifikasi (Sub-Fase 6)
+    // Send to admin_space (space.owner.userId)
+    await this.notifikasiService.createSafe(
+      space.owner.userId,
+      'reservasi_dibuat',
+      'Reservasi Baru Dibuat',
+      `Reservasi baru dengan kode ${result.kodeBooking} telah dibuat.`,
+    );
+
+    return response;
   }
 
   async findMy(memberId: number) {
@@ -315,6 +327,24 @@ async updateStatus(id: number, spaceOwnerId: number, status: string) {
     where: { id },
     data: { status: status as any },
   });
+
+  // Trigger notifikasi (Sub-Fase 6)
+  if (status === 'disetujui') {
+    await this.notifikasiService.createSafe(
+      r.member.userId,
+      'reservasi_dikonfirmasi',
+      'Reservasi Dikonfirmasi',
+      `Reservasi Anda dengan kode ${r.kodeBooking} telah disetujui.`,
+    );
+  } else if (status === 'dibatalkan') {
+    await this.notifikasiService.createSafe(
+      r.member.userId,
+      'reservasi_dibatalkan',
+      'Reservasi Dibatalkan',
+      `Reservasi Anda dengan kode ${r.kodeBooking} telah dibatalkan.`,
+    );
+  }
+
   return { id: updated.id, status: updated.status, updated_at: updated.updatedAt };
 }
 
@@ -330,6 +360,15 @@ async checkIn(id: number, spaceOwnerId: number) {
     where: { id },
     data: { status: 'aktif', checkInTime: new Date() },
   });
+
+  // Trigger notifikasi (Sub-Fase 6)
+  await this.notifikasiService.createSafe(
+    r.member.userId,
+    'check_in',
+    'Check-in Berhasil',
+    `Anda telah berhasil check-in untuk reservasi ${r.kodeBooking}.`,
+  );
+
   return { id: updated.id, status: updated.status, check_in_time: updated.checkInTime };
 }
 
@@ -345,6 +384,15 @@ async checkOut(id: number, spaceOwnerId: number) {
     where: { id },
     data: { status: 'selesai', checkOutTime: new Date() },
   });
+
+  // Trigger notifikasi (Sub-Fase 6)
+  await this.notifikasiService.createSafe(
+    r.member.userId,
+    'check_out',
+    'Check-out Berhasil',
+    `Anda telah berhasil check-out untuk reservasi ${r.kodeBooking}. Terima kasih!`,
+  );
+
   return { id: updated.id, status: updated.status, check_out_time: updated.checkOutTime };
 }
 

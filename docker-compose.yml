@@ -17,5 +17,40 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: ../../backend.Dockerfile
+    container_name: spotspace-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://spotspace:spotspace_dev_password@postgres:5432/spotspace_db?schema=public"
+      JWT_SECRET: ${JWT_SECRET:-spotspace_jwt_secret_change_this}
+      PORT: 3000
+      APP_URL: ${APP_URL:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+    volumes:
+      - spotspace_uploads:/app/uploads
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/main"
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: ../../frontend.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api}
+    container_name: spotspace-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3001:3001"
+
 volumes:
   spotspace_pgdata:
+  spotspace_uploads:

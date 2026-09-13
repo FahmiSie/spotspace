@@ -110,17 +110,34 @@ Mengacu pada ERD yang disediakan panitia — boleh disesuaikan tanpa mengurangi 
 - [ ] Ter-deploy ke VPS dengan domain aktif dan HTTPS.
 - [ ] Dokumentasi lengkap: source code, skema database, cara menjalankan aplikasi.
 
-## 9. Timeline Kerja (Estimasi, 21–23 Sept = hari ujian)
+## 9. Fitur Ekstra (Stretch Goal — di luar penilaian wajib UKK)
+
+Dikerjakan HANYA setelah seluruh scope wajib (Bagian 4, Kriteria Penerimaan Bagian 8) selesai dan sudah ter-deploy.
+
+| Fitur | Deskripsi Singkat |
+|---|---|
+| Dark/light mode toggle | Preferensi tema tersimpan di sisi klien |
+| Review space | Member beri rating 1-5 + komentar, hanya untuk space yang pernah dipesan dengan status `selesai` |
+| Wishlist | Member simpan space favorit untuk dilihat lagi nanti |
+| Grafik visual laporan | Visualisasi data dari endpoint laporan pendapatan yang sudah ada |
+| Export laporan | Unduh laporan bulanan dalam format PDF/Excel |
+| Galeri multi-foto | Space bisa punya beberapa foto, bukan cuma satu foto utama |
+| Search & filter lanjutan | Filter katalog space berdasarkan rentang harga dan kapasitas minimum |
+| Notifikasi in-app | Member/admin dapat notifikasi untuk event reservasi & promo (polling, bukan real-time) |
+| Payment Gateway (Midtrans Sandbox) | Simulasi pembayaran reservasi — status pembayaran terpisah dari status konfirmasi reservasi |
+
+## 10. Timeline Kerja (Estimasi, 21–23 Sept = hari ujian)
 
 | Minggu | Fokus |
 |---|---|
 | Minggu 1 | Setup project, ERD & migrasi database, modul auth (register/login multi-role) |
 | Minggu 2 | Modul space, diskon, reservasi (backend lengkap + frontend member) |
 | Minggu 3 | Modul admin (CRUD, check-in/out, laporan), e-ticket & QR Code |
-| Minggu 4 (H-3) | Testing end-to-end, dokumentasi, deploy ke VPS + domain, buffer bug fixing |
+| Minggu 4 (H-3) | Testing end-to-end, dokumentasi, deploy ke VPS + domain, buffer bug fixing, fitur ekstra (Bagian 9) jika waktu tersisa |
 
-## 10. Out of Scope (Tidak Dikerjakan)
+## 11. Out of Scope (Tidak Dikerjakan Kecuali Sebagai Stretch Goal Bagian 9)
 
-- Pembayaran online (payment gateway) — sistem hanya mencatat `total_bayar`, tidak ada integrasi pembayaran nyata.
-- Notifikasi email/SMS otomatis.
+- Pembayaran online sungguhan — sistem inti hanya mencatat `total_bayar`; integrasi Midtrans Sandbox hanya simulasi, dikerjakan terakhir sebagai bonus.
+- Notifikasi email/SMS otomatis (notifikasi in-app tercakup di Bagian 9, bukan email/SMS).
 - Multi-bahasa (i18n).
+- Real-time WebSocket untuk notifikasi (cukup polling).

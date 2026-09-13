@@ -6,7 +6,7 @@ Dokumen ini adalah rujukan TUNGGAL dan LENGKAP. Agent harus mengikuti dokumen in
 
 ## 0. Ringkasan Proyek
 
-- **Nama:** Smart Coworking Space Reservation System (spotspace)
+- **Nama:** Smart Coworking Space Reservation System
 - **Konteks:** Proyek Uji Kompetensi Keahlian (UKK) RPL — dinilai oleh penguji sekolah
 - **Kategori:** Fullstack (backend + frontend dibangun sendiri, basis data mandiri)
 - **Referensi lengkap requirement:** lihat `docs/PRD.md` di repo yang sama (dokumen terpisah, sudah dibuat)
@@ -35,7 +35,7 @@ Dokumen ini adalah rujukan TUNGGAL dan LENGKAP. Agent harus mengikuti dokumen in
 ## 2. Struktur Folder Wajib
 
 ```
-spotspace/
+smart-coworking-ukk/
 ├── apps/
 │   ├── backend/
 │   │   ├── src/
@@ -188,6 +188,64 @@ model DetailReservasi {
 }
 ```
 
+### 3.1 Model Tambahan (Fitur Ekstra — Fase 7.5)
+
+```prisma
+model SpaceFoto {
+  id      Int    @id @default(autoincrement())
+  spaceId Int
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  url     String
+  urutan  Int    @default(0)
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  spaceId   Int
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  memberId  Int
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  rating    Int // 1-5
+  komentar  String?
+  createdAt DateTime @default(now())
+
+  @@unique([spaceId, memberId])
+}
+
+model Wishlist {
+  id        Int      @id @default(autoincrement())
+  memberId  Int
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  spaceId   Int
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([memberId, spaceId])
+}
+
+enum TipeNotifikasi {
+  reservasi_dibuat
+  reservasi_dikonfirmasi
+  reservasi_dibatalkan
+  check_in
+  check_out
+  promo_baru
+}
+
+model Notifikasi {
+  id        Int            @id @default(autoincrement())
+  userId    Int
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tipe      TipeNotifikasi
+  judul     String
+  pesan     String
+  isRead    Boolean        @default(false)
+  createdAt DateTime       @default(now())
+}
+```
+
+Field `foto` (string tunggal) di model `Space` tetap dipertahankan sebagai foto utama/thumbnail katalog. `SpaceFoto[]` khusus untuk galeri tambahan di halaman detail.
+
 ## 4. Aturan Bisnis Eksplisit (WAJIB diimplementasi persis)
 
 1. **Cek ketersediaan space**: sebuah space TIDAK bisa dipesan jika ada reservasi lain (status bukan `dibatalkan`) pada `spaceId` yang sama dengan rentang jam yang overlap di tanggal yang sama. Overlap check: `jam_mulai_baru < jam_selesai_existing AND jam_selesai_baru > jam_mulai_existing`.
@@ -207,6 +265,10 @@ model DetailReservasi {
 8. **Role guard**: endpoint admin (`/admin/*`) hanya bisa diakses role `admin_space`; endpoint member hanya bisa diakses role `member`. Gunakan NestJS Guards + custom `@Roles()` decorator.
 9. **Password** wajib di-hash dengan bcrypt (salt rounds minimal 10) sebelum disimpan, tidak pernah dikembalikan di response manapun.
 10. **QR Code e-ticket**: payload berisi minimal `kode_booking` + `reservasi_id`, digenerate di backend (gunakan library `qrcode`), dikembalikan sebagai base64 image atau URL.
+11. **Review**: member hanya bisa memberi review pada space yang pernah ia pesan dengan status reservasi `selesai`. Satu member hanya bisa review satu kali per space (constraint `@@unique([spaceId, memberId])`) — kalau mau ubah, gunakan update, bukan create baru.
+12. **Wishlist**: toggle sederhana (add/remove), tidak boleh duplikat entry untuk kombinasi member+space yang sama.
+13. **Notifikasi**: dibuat otomatis (server-side trigger) saat event berikut terjadi — reservasi dibuat (untuk admin space), reservasi dikonfirmasi/dibatalkan (untuk member), check-in/check-out (untuk member), promo baru dibuat (broadcast ke semua member). Notifikasi diambil via polling (`GET /api/notifikasi`, interaval ~30 detik di FE), bukan WebSocket/real-time.
+14. **Export laporan**: format PDF dan/atau Excel dari data yang sama persis dengan `GET /api/admin/reports/monthly` — tidak boleh ada penghitungan ulang atau angka yang berbeda dari endpoint laporan yang sudah ada.
 
 ## 5. Breakdown Tugas per Fase (Agent mengerjakan berurutan, checklist per fase)
 
@@ -259,6 +321,17 @@ model DetailReservasi {
 - [ ] Endpoint rekapitulasi pendapatan per bulan (agregasi sesuai contoh response di kontrak API panitia)
 - [ ] Frontend: dashboard laporan dengan chart per tipe space
 
+### FASE 7.5 — Fitur Ekstra (dikerjakan HANYA setelah Fase 0-7 selesai & teruji)
+- [ ] Search & filter lanjutan: extend `SpacesService.findAll()` dengan filter range harga (`min_harga`, `max_harga`) dan kapasitas minimum (`min_kapasitas`)
+- [ ] Migrasi schema: tambah model `SpaceFoto`, `Review`, `Wishlist`, `Notifikasi` (lihat Bagian 3.1)
+- [ ] Modul Review: create (validasi sudah pernah `selesai`), list review per space, endpoint publik lihat rating rata-rata per space
+- [ ] Modul Wishlist: toggle add/remove, list wishlist milik member
+- [ ] Modul Galeri: endpoint tambah/hapus foto ke `SpaceFoto`, update `spaces.controller` untuk include galeri di detail space
+- [ ] Modul Notifikasi: service trigger di `reservasi.service` & `diskon.service` (lihat aturan bisnis #13), endpoint list + mark-as-read
+- [ ] Modul Export: endpoint `GET /api/admin/reports/monthly/export?format=pdf|xlsx`
+- [ ] Frontend: dark/light mode toggle (Tailwind `dark:` variant + toggle button, simpan preferensi di localStorage-equivalent Next.js/cookie)
+- [ ] Frontend: grafik visual laporan pakai Recharts/Chart.js dari endpoint `reports/monthly` yang sudah ada (tidak perlu endpoint baru)
+
 ### FASE 8 — Testing & Dokumentasi
 - [ ] Test manual end-to-end seluruh alur (checklist Bagian 6)
 - [ ] Export Postman collection seluruh endpoint
@@ -272,6 +345,15 @@ model DetailReservasi {
 - [ ] Setup SSL via Certbot
 - [ ] Deploy via `docker compose up -d` di VPS
 - [ ] Smoke test seluruh fitur di environment production
+
+### FASE 10 — Payment Gateway (BONUS, hanya jika Fase 0-9 sudah 100% selesai & di-deploy)
+- [ ] Model baru `Payment` (1-1 dengan `Reservasi`): `midtransOrderId`, `snapToken`, `status` (`pending`/`paid`/`expired`/`failed`), `paidAt`
+- [ ] Install `midtrans-client`, setup akun Sandbox
+- [ ] Endpoint generate Snap Token setelah reservasi dibuat
+- [ ] Webhook `POST /api/payment/notification` — verifikasi signature dari Midtrans sebelum update status
+- [ ] Status pembayaran independen dari status reservasi (lihat AGENT_BRIEF, bukan pengganti alur konfirmasi admin)
+- [ ] Testing lokal butuh ngrok/Cloudflare Tunnel untuk expose webhook ke Midtrans Sandbox
+- [ ] Frontend: tombol bayar di halaman status reservasi, integrasi Snap popup
 
 ## 6. Checklist Definition of Done (Final)
 

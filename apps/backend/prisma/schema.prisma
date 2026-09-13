@@ -7,6 +7,74 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model SpaceFoto {
+  id      Int    @id @default(autoincrement())
+  spaceId Int
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  url     String
+  urutan  Int    @default(0)
+
+  @@map("space_foto")
+}
+
+model Review {
+  id         Int          @id @default(autoincrement())
+  spaceId    Int
+  space      Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  memberId   Int
+  member     Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  rating     Int // 1-5
+  komentar   String?
+  fotoReview ReviewFoto[]
+  createdAt  DateTime     @default(now())
+
+  @@unique([spaceId, memberId]) // 1 member cuma bisa review 1x per space
+  @@map("review")
+}
+
+model ReviewFoto {
+  id       Int    @id @default(autoincrement())
+  reviewId Int
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  url      String
+
+  @@map("review_foto")
+}
+
+model Wishlist {
+  id        Int      @id @default(autoincrement())
+  memberId  Int
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  spaceId   Int
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([memberId, spaceId]) // tidak boleh wishlist space yang sama 2x
+  @@map("wishlist")
+}
+
+enum TipeNotifikasi {
+  reservasi_dibuat
+  reservasi_dikonfirmasi
+  reservasi_dibatalkan
+  check_in
+  check_out
+  promo_baru
+}
+
+model Notifikasi {
+  id        Int             @id @default(autoincrement())
+  userId    Int
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tipe      TipeNotifikasi
+  judul     String
+  pesan     String
+  isRead    Boolean         @default(false)
+  createdAt DateTime        @default(now())
+
+  @@map("notifikasi")
+}
+
 enum Role {
   member
   admin_space
@@ -27,13 +95,14 @@ enum StatusReservasi {
 }
 
 model User {
-  id         Int         @id @default(autoincrement())
-  username   String      @unique
+  id         Int          @id @default(autoincrement())
+  username   String       @unique
   password   String
   role       Role
   member     Member?
   spaceOwner SpaceOwner?
-  createdAt  DateTime    @default(now())
+  notifikasi Notifikasi[]
+  createdAt  DateTime     @default(now())
 
   @@map("users")
 }
@@ -48,6 +117,8 @@ model Member {
   telp       String
   foto       String?
   reservasi  Reservasi[]
+  reviews    Review[]
+  wishlist   Wishlist[]
 
   @@map("member")
 }
@@ -60,6 +131,7 @@ model SpaceOwner {
   namaPemilik   String
   telp          String
   deskripsi     String?
+  foto          String?
   spaces        Space[]
 
   @@map("space_owner")
@@ -76,6 +148,9 @@ model Space {
   ownerId         Int
   owner           SpaceOwner        @relation(fields: [ownerId], references: [id])
   detailReservasi DetailReservasi[]
+  fotoGaleri      SpaceFoto[]
+  reviews         Review[]
+  wishlist        Wishlist[]
   createdAt       DateTime          @default(now())
 
   @@map("space")
@@ -125,4 +200,17 @@ model DetailReservasi {
   totalBayar     Float
 
   @@map("detail_reservasi")
+}
+
+model Maker {
+  id        Int      @id @default(autoincrement())
+  name      String
+  username  String   @unique
+  email     String   @unique
+  password  String
+  appKey    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("maker")
 }

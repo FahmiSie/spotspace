@@ -3,10 +3,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateDiskonDto } from './dto/create-diskon.dto';
 import { UpdateDiskonDto } from './dto/update-diskon.dto';
 import { CheckPromoDto } from './dto/check-promo.dto';
+import { NotifikasiService } from '../notifikasi/notifikasi.service';
 
 @Injectable()
 export class DiskonService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private notifikasiService: NotifikasiService) {}
 
   async findAllActive() {
     const now = new Date();
@@ -51,7 +52,7 @@ export class DiskonService {
     const existing = await this.prisma.diskon.findUnique({ where: { namaDiskon: dto.nama_diskon } });
     if (existing) throw new ConflictException('Kode promo sudah digunakan');
 
-    return this.prisma.diskon.create({
+    const diskon = await this.prisma.diskon.create({
       data: {
         namaDiskon: dto.nama_diskon,
         persentaseDiskon: dto.persentase_diskon,
@@ -59,6 +60,15 @@ export class DiskonService {
         tanggalAkhir: new Date(dto.tanggal_akhir),
       },
     });
+
+    // Trigger notifikasi broadcast (Sub-Fase 6)
+    await this.notifikasiService.broadcastToAllMembersSafe(
+      'promo_baru',
+      'Promo Baru Tersedia!',
+      `Dapatkan diskon ${diskon.persentaseDiskon}% dengan kode promo ${diskon.namaDiskon}.`,
+    );
+
+    return diskon;
   }
 
   async update(id: number, dto: UpdateDiskonDto) {
@@ -76,6 +86,12 @@ export class DiskonService {
 
   async remove(id: number) {
     await this.findOne(id);
+
+    const countPemakaian = await this.prisma.detailReservasi.count({ where: { diskonId: id } });
+    if (countPemakaian > 0) {
+      throw new BadRequestException('Diskon tidak dapat dihapus karena pernah digunakan dalam reservasi');
+    }
+
     await this.prisma.diskon.delete({ where: { id } });
     return { id, deleted: true };
   }

@@ -4,6 +4,7 @@ import { SpacesService } from './space.service';
 import { CreateSpaceDto } from './dto/create-space.dto';
 import { UpdateSpaceDto } from './dto/update-space.dto';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
+import { AddFotoDto } from './dto/add-foto.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 
@@ -22,8 +23,18 @@ export class SpacesController {
   }
 
   @Get('spaces')
-  findAll(@Query('tipe') tipe?: string, @Query('search') search?: string) {
-    return this.spacesService.findAll(tipe, search);
+  findAll(
+    @Query('tipe') tipe?: string,
+    @Query('search') search?: string,
+    @Query('min_harga') minHarga?: string,
+    @Query('max_harga') maxHarga?: string,
+    @Query('min_kapasitas') minKapasitas?: string,
+  ) {
+    return this.spacesService.findAll(tipe, search, {
+      minHarga: minHarga ? Number(minHarga) : undefined,
+      maxHarga: maxHarga ? Number(maxHarga) : undefined,
+      minKapasitas: minKapasitas ? Number(minKapasitas) : undefined,
+    });
   }
 
   @Get('spaces/:id')
@@ -65,5 +76,24 @@ export class SpacesController {
   @Delete('admin/spaces/:id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.spacesService.remove(id);
+  }
+
+  // --- Gallery endpoints ---
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('admin_space')
+  @Post('admin/spaces/:id/foto')
+  addFoto(@Param('id', ParseIntPipe) id: number, @Req() req: any, @Body() dto: AddFotoDto) {
+    return this.spacesService.addFotoGaleri(id, req.user.spaceOwnerId, dto.url);
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('admin_space')
+  @Delete('admin/spaces/:id/foto/:fotoId')
+  removeFoto(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('fotoId', ParseIntPipe) fotoId: number,
+    @Req() req: any,
+  ) {
+    return this.spacesService.removeFotoGaleri(id, fotoId, req.user.spaceOwnerId);
   }
 }

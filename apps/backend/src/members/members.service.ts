@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberAdminDto } from './dto/create-member-admin.dto';
@@ -78,6 +78,12 @@ export class MembersService {
 
   async remove(id: number) {
     const member = await this.findOne(id);
+
+    const countReservasi = await this.prisma.reservasi.count({ where: { memberId: id } });
+    if (countReservasi > 0) {
+      throw new BadRequestException('Member tidak dapat dihapus karena memiliki histori reservasi');
+    }
+
     await this.prisma.member.delete({ where: { id } });
     await this.prisma.user.delete({ where: { id: member.userId } });
     return { id, deleted: true };
@@ -99,6 +105,7 @@ export class MembersService {
         namaPemilik: dto.nama_pemilik,
         telp: dto.telp,
         deskripsi: dto.deskripsi,
+        foto: dto.foto,
       },
     });
   }

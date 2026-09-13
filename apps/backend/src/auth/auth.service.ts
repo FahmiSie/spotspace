@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -105,6 +106,41 @@ export class AuthService {
       member: user.member,
       spaceOwner: user.spaceOwner,
       accessToken,
+    };
+  }
+
+  async getProfile(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { member: true, spaceOwner: true },
+    });
+    if (!user) throw new NotFoundException('User tidak ditemukan');
+
+    return {
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      memberId: user.member?.id ?? null,
+      spaceOwnerId: user.spaceOwner?.id ?? null,
+      member: user.member
+        ? {
+            id: user.member.id,
+            nama_member: user.member.namaMember,
+            instansi: user.member.instansi,
+            alamat: user.member.alamat,
+            telp: user.member.telp,
+            foto: user.member.foto,
+          }
+        : null,
+      spaceOwner: user.spaceOwner
+        ? {
+            id: user.spaceOwner.id,
+            nama_coworking: user.spaceOwner.namaCoworking,
+            nama_pemilik: user.spaceOwner.namaPemilik,
+            telp: user.spaceOwner.telp,
+            foto: user.spaceOwner.foto,
+          }
+        : null,
     };
   }
 

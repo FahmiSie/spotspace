@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSpaceDto } from './dto/create-space.dto';
 import { UpdateSpaceDto } from './dto/update-space.dto';
@@ -17,12 +17,28 @@ export class SpacesService {
     ];
   }
 
-  async findAll(tipe?: string, search?: string) {
+  async findAll(
+    tipe?: string,
+    search?: string,
+    filters?: { minHarga?: number; maxHarga?: number; minKapasitas?: number },
+  ) {
+    const where: any = {};
+
+    if (tipe) where.tipe = tipe as any;
+    if (search) where.namaSpace = { contains: search, mode: 'insensitive' };
+
+    if (filters?.minHarga !== undefined || filters?.maxHarga !== undefined) {
+      where.hargaPerJam = {};
+      if (filters.minHarga !== undefined) where.hargaPerJam.gte = filters.minHarga;
+      if (filters.maxHarga !== undefined) where.hargaPerJam.lte = filters.maxHarga;
+    }
+
+    if (filters?.minKapasitas !== undefined) {
+      where.kapasitas = { gte: filters.minKapasitas };
+    }
+
     return this.prisma.space.findMany({
-      where: {
-        ...(tipe ? { tipe: tipe as any } : {}),
-        ...(search ? { namaSpace: { contains: search, mode: 'insensitive' } } : {}),
-      },
+      where,
       include: { owner: true },
     });
   }
@@ -30,10 +46,25 @@ export class SpacesService {
   async findOne(id: number) {
     const space = await this.prisma.space.findUnique({
       where: { id },
-      include: { owner: true },
+      include: {
+        owner: true,
+        fotoGaleri: { orderBy: { urutan: 'asc' } },
+      },
     });
     if (!space) throw new NotFoundException('Space dengan ID tersebut tidak ditemukan');
-    return space;
+
+    const reviewAgg = await this.prisma.review.aggregate({
+      where: { spaceId: id },
+      _avg: { rating: true },
+      _count: { id: true },
+    });
+
+    return {
+      ...space,
+      foto_galeri: space.fotoGaleri.map((f) => ({ id: f.id, url: f.url, urutan: f.urutan })),
+      rating_rata_rata: reviewAgg._avg.rating ? Number(reviewAgg._avg.rating.toFixed(1)) : null,
+      total_review: reviewAgg._count.id,
+    };
   }
 
   async create(ownerId: number, dto: CreateSpaceDto) {
@@ -67,6 +98,16 @@ export class SpacesService {
 
   async remove(id: number) {
     await this.findOne(id);
+
+    // Cek apakah space memiliki histori reservasi
+    const countReservasi = await this.prisma.detailReservasi.count({
+      where: { spaceId: id },
+    });
+
+    if (countReservasi > 0) {
+      throw new BadRequestException('Space tidak dapat dihapus karena memiliki histori reservasi');
+    }
+
     await this.prisma.space.delete({ where: { id } });
     return { id, deleted: true };
   }
@@ -110,5 +151,45 @@ export class SpacesService {
       harga_per_jam: space.hargaPerJam,
       estimasi_total: estimasiTotal,
     };
+  }
+
+  // --- Gallery methods ---
+
+  private async assertSpaceOwnership(spaceId: number, ownerId: number) {
+    const space = await this.prisma.space.findUnique({ where: { id: spaceId } });
+    if (!space) throw new NotFoundException('Space tidak ditemukan');
+    if (space.ownerId !== ownerId) {
+      throw new ForbiddenException('Anda tidak memiliki akses ke space ini');
+    }
+    return space;
+  }
+
+  async addFotoGaleri(spaceId: number, ownerId: number, url: string) {
+    await this.assertSpaceOwnership(spaceId, ownerId);
+
+    // Auto-increment urutan
+    const lastFoto = await this.prisma.spaceFoto.findFirst({
+      where: { spaceId },
+      orderBy: { urutan: 'desc' },
+    });
+    const urutan = (lastFoto?.urutan ?? 0) + 1;
+
+    const foto = await this.prisma.spaceFoto.create({
+      data: { spaceId, url, urutan },
+    });
+
+    return { id: foto.id, url: foto.url, urutan: foto.urutan };
+  }
+
+  async removeFotoGaleri(spaceId: number, fotoId: number, ownerId: number) {
+    await this.assertSpaceOwnership(spaceId, ownerId);
+
+    const foto = await this.prisma.spaceFoto.findFirst({
+      where: { id: fotoId, spaceId },
+    });
+    if (!foto) throw new NotFoundException('Foto tidak ditemukan di space ini');
+
+    await this.prisma.spaceFoto.delete({ where: { id: fotoId } });
+    return { id: fotoId, deleted: true };
   }
 }
