@@ -12,8 +12,9 @@ Aplikasi Reservasi Coworking Space & Workstation (Smart Space Booking) — Uji K
 |---|---|
 | Backend | NestJS (TypeScript), Prisma ORM, PostgreSQL |
 | Frontend | Next.js (App Router, TypeScript), Tailwind CSS, shadcn/ui |
-| Auth | JWT (Passport.js), role-based: `member` & `admin_space` |
+| Auth | JWT (Passport.js), Google OAuth, OTP Verification |
 | Infra | Docker & Docker Compose |
+| Integrasi | Midtrans (Payment Gateway), Geocoding API |
 | API Docs | Swagger (`/docs`) |
 
 ## Struktur Proyek
@@ -52,6 +53,10 @@ spotspace/
    JWT_SECRET=ganti_dengan_secret_acak_yang_kuat
    APP_URL=http://localhost:3000
    NEXT_PUBLIC_API_URL=http://localhost:3000/api
+   
+   # Midtrans (Opsional untuk integrasi pembayaran)
+   MIDTRANS_SERVER_KEY=server_key_anda
+   NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=client_key_anda
    ```
 
 3. Build dan jalankan seluruh service:
@@ -127,35 +132,41 @@ newman run docs/SpotSpace.postman_collection.json -e docs/SpotSpace.postman_envi
 ```bash
 cd apps/backend
 npx tsc --noEmit
+
+cd ../frontend
+npx tsc --noEmit
 ```
 
 ## Fitur Utama
 
-**Member:**
-- Registrasi & login
-- Melihat katalog space dengan filter (tipe, harga, kapasitas, pencarian)
-- Reservasi space dengan kode promo
+**Member (Penyewa):**
+- Registrasi, Login (Email/Password), dan Login dengan Google OAuth
+- Verifikasi keamanan berbasis OTP
+- Melihat katalog *space* dengan filter lokasi dinamis (Geocoding)
+- Reservasi *space* dengan sistem pembayaran terintegrasi (Midtrans QRIS/GoPay)
 - Melihat status & histori reservasi
 - Cetak e-ticket dengan QR Code
-- Review & rating space
-- Wishlist space favorit
+- Review & Rating *space* (khusus member terverifikasi)
+- Wishlist *space* favorit
 
-**Admin Space:**
+**Admin Space (Pemilik):**
 - Registrasi & login
 - Kelola profil lokasi coworking
-- CRUD member, space (termasuk galeri multi-foto), dan diskon/promo
-- Kelola reservasi: konfirmasi, check-in, check-out
-- Laporan rekapitulasi pendapatan bulanan (termasuk export PDF/Excel)
+- CRUD Member, Space (mendukung multi-upload galeri foto), dan Diskon/Promo
+- Kelola reservasi: validasi tiket, *check-in*, *check-out*
+- Dashboard analitik sentralisasi ulasan pelanggan (*Review & Feedback*)
+- Laporan rekapitulasi pendapatan bulanan (export PDF/Excel)
 
-**Lainnya:**
-- Notifikasi in-app (polling)
-- Modul Maker independen untuk keperluan verifikasi App Key (lihat `docs/AGENT_BRIEF.md`)
+**Infrastruktur Sistem:**
+- Modul *Upload* Terpusat (untuk Avatar, Logo, dan Galeri Space)
+- Sistem Geocoding untuk lokasi peta (*Location Preview*)
+- Notifikasi status *in-app* / Webhook
 
 ## Dokumentasi Tambahan
 
 - [`docs/PRD.md`](docs/PRD.md) — Product Requirements Document lengkap
-- [`docs/AGENT_BRIEF.md`](docs/AGENT_BRIEF.md) — spesifikasi teknis, skema database, dan aturan bisnis detail
-- Swagger UI (`/docs`) — dokumentasi interaktif seluruh endpoint API
+- [`docs/AGENT_BRIEF.md`](docs/AGENT_BRIEF.md) — Spesifikasi teknis, skema database, dan aturan bisnis detail
+- Swagger UI (`/docs`) — Dokumentasi interaktif seluruh endpoint API
 
 ## Lisensi
 
