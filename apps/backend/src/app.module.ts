@@ -16,6 +16,8 @@ import { UploadModule } from './upload/upload.module';
 import { PaymentModule } from './payment/payment.module';
 import { GeocodingModule } from './geocoding/geocoding.module';
 
+import { ScheduleModule } from '@nestjs/schedule';
+
 @Module({
   imports: [
     AuthModule,
@@ -32,6 +34,7 @@ import { GeocodingModule } from './geocoding/geocoding.module';
     UploadModule,
     PaymentModule,
     GeocodingModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -48,7 +48,18 @@ export class MembersService {
       };
     }
 
-    return this.prisma.member.findMany({ where });
+    return this.prisma.member.findMany({ 
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          }
+        }
+      }
+    });
   }
 
   async findOne(id: number, ownerId: number) {

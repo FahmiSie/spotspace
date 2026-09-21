@@ -90,7 +90,7 @@ export function BookingWidget({ spaceId, hargaPerJam }: BookingWidgetProps) {
     setCheckingDiscount(true);
     setDiscountError('');
     try {
-      const res = await checkDiscount(kodePromo);
+      const res = await checkDiscount(kodePromo, spaceId);
       // Kalkulasi potongan = persentase * total harga awal
       const totalAwal = hargaPerJam * durasi;
       const potongan = (res.persentaseDiskon / 100) * totalAwal;
@@ -213,7 +213,7 @@ export function BookingWidget({ spaceId, hargaPerJam }: BookingWidgetProps) {
                   <Minus className="w-4 h-4" />
                 </button>
                 <span className="font-medium text-sm">{durasi}</span>
-                <button type="button" onClick={() => setValue('durasi', Math.min(24, durasi + 1))} className="text-ink hover:text-ink disabled:opacity-50" disabled={durasi >= 24}>
+                <button type="button" onClick={() => setValue('durasi', Math.min(12, durasi + 1))} className="text-ink hover:text-ink disabled:opacity-50" disabled={durasi >= 12}>
                   <Plus className="w-4 h-4" />
                 </button>
               </div>

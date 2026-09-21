@@ -9,7 +9,8 @@ import { HeroSearch } from "@/components/spaces/hero-search";
 
 async function getSpaces() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/spaces`, { cache: 'no-store' });
+    const apiBase = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+    const res = await fetch(`${apiBase}/spaces`, { cache: 'no-store' });
     if (!res.ok) return [];
     return await res.json();
   } catch (error) {

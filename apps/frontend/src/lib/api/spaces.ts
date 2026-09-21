@@ -15,7 +15,7 @@ export async function checkAvailability(params: { id_space: number | string, jam
   return res.data;
 }
 
-export async function checkDiscount(kode: string) {
-  const res = await api.post(`/diskon/check`, { nama_diskon: kode });
+export async function checkDiscount(kode: string, spaceId?: number) {
+  const res = await api.post(`/diskon/check`, { nama_diskon: kode, ...(spaceId ? { space_id: spaceId } : {}) });
   return res.data;
 }

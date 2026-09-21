@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsNumber, Min, Max, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, Min, Max, IsDateString, IsOptional, IsInt } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateDiskonDto {
   @IsString() @IsNotEmpty()
@@ -12,4 +13,7 @@ export class CreateDiskonDto {
 
   @IsDateString()
   tanggal_akhir: string;
+
+  @IsOptional() @Type(() => Number) @IsInt()
+  space_id?: number;
 }

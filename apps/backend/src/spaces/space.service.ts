@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSpaceDto } from './dto/create-space.dto';
 import { UpdateSpaceDto } from './dto/update-space.dto';
@@ -136,8 +138,8 @@ export class SpacesService {
     });
   }
 
-  async update(id: number, dto: UpdateSpaceDto) {
-    await this.findOne(id);
+  async update(id: number, ownerId: number, dto: UpdateSpaceDto) {
+    await this.assertSpaceOwnership(id, ownerId);
     return this.prisma.space.update({
       where: { id },
       data: {
@@ -151,8 +153,9 @@ export class SpacesService {
     });
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
+  async remove(id: number, ownerId: number) {
+    await this.assertSpaceOwnership(id, ownerId);
+    const space = await this.findOne(id);
 
     // Cek apakah space memiliki histori reservasi
     const countReservasi = await this.prisma.detailReservasi.count({
@@ -164,6 +167,35 @@ export class SpacesService {
     }
 
     await this.prisma.space.delete({ where: { id } });
+    
+    // Remove main photo if exists
+    if (space.foto) {
+      try {
+        const fileName = space.foto.split('/').pop();
+        if (fileName) {
+          const filePath = path.join(process.cwd(), 'uploads', fileName);
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        }
+      } catch (err) {
+        console.error('Gagal menghapus file fisik foto utama:', err);
+      }
+    }
+
+    // Remove gallery photos
+    if (space.fotoGaleri && space.fotoGaleri.length > 0) {
+      for (const foto of space.fotoGaleri) {
+        try {
+          const fileName = foto.url.split('/').pop();
+          if (fileName) {
+            const filePath = path.join(process.cwd(), 'uploads', fileName);
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          }
+        } catch (err) {
+          console.error('Gagal menghapus file fisik galeri:', err);
+        }
+      }
+    }
+
     return { id, deleted: true };
   }
 
@@ -181,32 +213,51 @@ export class SpacesService {
     }));
   }
 
+  async findOneForAdmin(id: number, ownerId: number) {
+    await this.assertSpaceOwnership(id, ownerId);
+    return this.findOne(id);
+  }
+
   async checkAvailability(dto: CheckAvailabilityDto) {
     const space = await this.findOne(dto.id_space);
     const jamSelesai = hitungJamSelesai(dto.jam_mulai, dto.durasi_jam);
     const tanggal = new Date(dto.tanggal);
 
-    // Ambil semua reservasi aktif (bukan dibatalkan) di space & tanggal yang sama
+    const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+    // Ambil semua reservasi aktif, abaikan stale pending (> 15 menit belum bayar)
     const existingReservasi = await this.prisma.reservasi.findMany({
       where: {
         status: { not: 'dibatalkan' },
         tanggalReservasi: tanggal,
         detail: { spaceId: dto.id_space },
+        NOT: {
+          status: 'belum_dikonfirm',
+          createdAt: { lt: fifteenMinsAgo },
+        },
       },
     });
 
-    const bentrok = existingReservasi.some((r) =>
-      isOverlap(dto.jam_mulai, jamSelesai, r.jamMulai, r.jamSelesai),
+    const overlappingBookings = existingReservasi.filter((r) =>
+      isOverlap(dto.jam_mulai, jamSelesai, r.jamMulai, r.jamSelesai)
     );
 
-    if (bentrok) {
-      throw new BadRequestException('Maaf, space sudah terisi atau dibooking pada jam tersebut!');
-    }
+    const maxAllowed = space.tipe === 'desk' ? space.kapasitas : 1;
+    const tersedia = overlappingBookings.length < maxAllowed;
+    const sisaSlot = Math.max(0, maxAllowed - overlappingBookings.length);
 
     const estimasiTotal = space.hargaPerJam * dto.durasi_jam;
 
+    if (!tersedia) {
+      const pesan = space.tipe === 'desk'
+        ? `Kapasitas meja telah penuh untuk jam tersebut (Maks: ${space.kapasitas} orang).`
+        : `Ruangan ${space.tipe.replace('_', ' ')} sudah dipesan oleh pengguna lain pada jadwal tersebut.`;
+      throw new BadRequestException(pesan);
+    }
+
     return {
       available: true,
+      sisa_slot: sisaSlot,
       id_space: space.id,
       nama_space: space.namaSpace,
       tanggal: dto.tanggal,
@@ -255,6 +306,20 @@ export class SpacesService {
     if (!foto) throw new NotFoundException('Foto tidak ditemukan di space ini');
 
     await this.prisma.spaceFoto.delete({ where: { id: fotoId } });
+
+    // Hapus berkas fisik
+    try {
+      const fileName = foto.url.split('/').pop();
+      if (fileName) {
+        const filePath = path.join(process.cwd(), 'uploads', fileName);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    } catch (err) {
+      console.error('Gagal menghapus file fisik galeri:', err);
+    }
+
     return { id: fotoId, deleted: true };
   }
 }

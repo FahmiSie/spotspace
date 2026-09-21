@@ -5,6 +5,7 @@ import { Star, User, Loader2 } from "lucide-react";
 import { cn } from "cn";
 import { ReviewModal } from "./ReviewModal";
 import Image from "next/image";
+import { getAssetUrl } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 
@@ -136,7 +137,7 @@ export function ReviewSection({ spaceId }: { spaceId: number }) {
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-stone-200 flex items-center justify-center shrink-0">
                       {review.member.foto ? (
-                        <Image src={review.member.foto} alt={review.member.namaMember} width={48} height={48} className="object-cover w-full h-full" />
+                        <Image src={getAssetUrl(review.member.foto)} alt={review.member.namaMember} width={48} height={48} unoptimized className="object-cover w-full h-full" />
                       ) : (
                         <User className="w-6 h-6 text-ink/40" />
                       )}

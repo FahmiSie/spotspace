@@ -26,11 +26,31 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+      - path: ./apps/backend/.env
+        required: false
     environment:
-      DATABASE_URL: "postgresql://spotspace:spotspace_dev_password@postgres:5432/spotspace_db?schema=public"
+      DATABASE_URL: ${DATABASE_URL:-postgresql://spotspace:spotspace_dev_password@postgres:5432/spotspace_db?schema=public}
       JWT_SECRET: ${JWT_SECRET:-spotspace_jwt_secret_change_this}
       PORT: 3000
       APP_URL: ${APP_URL:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
+      MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
+      MIDTRANS_MERCHANT_ID: ${MIDTRANS_MERCHANT_ID:-}
+      MIDTRANS_IS_PRODUCTION: ${MIDTRANS_IS_PRODUCTION:-false}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
     ports:
       - "3000:3000"
     volumes:
@@ -44,10 +64,14 @@ services:
       dockerfile: ../../frontend.Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api}
+        NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: ${NEXT_PUBLIC_MIDTRANS_CLIENT_KEY:-}
+        INTERNAL_API_URL: http://backend:3000/api
     container_name: spotspace-frontend
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      INTERNAL_API_URL: http://backend:3000/api
     ports:
       - "3001:3001"
 

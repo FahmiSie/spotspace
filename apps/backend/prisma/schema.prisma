@@ -166,6 +166,7 @@ model Space {
   fotoGaleri      SpaceFoto[]
   reviews         Review[]
   wishlist        Wishlist[]
+  diskon          Diskon[]
   createdAt       DateTime          @default(now())
 
   @@map("space")
@@ -178,6 +179,8 @@ model Diskon {
   tanggalAwal      DateTime
   tanggalAkhir     DateTime
   detailReservasi  DetailReservasi[]
+  spaceId          Int?              @map("space_id")
+  space            Space?            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
 
   @@map("diskon")
 }

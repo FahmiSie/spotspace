@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { Star, MessageSquare, Building2, User, Loader2, ArrowUpDown, Filter, Search } from "lucide-react";
 import { format } from "date-fns";
 import Image from "next/image";
+import { getAssetUrl } from "@/lib/utils";
 
 interface AdminReviewData {
   reviews: any[];
@@ -246,7 +247,7 @@ export default function AdminReviewsPage() {
                   <div className="flex gap-3 items-center">
                     {review.member?.foto ? (
                       <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 border border-stone-200">
-                        <Image src={review.member.foto} alt={review.member.namaMember || "User"} fill className="object-cover" />
+                        <Image src={getAssetUrl(review.member.foto)} alt={review.member.namaMember || "User"} fill unoptimized className="object-cover" />
                       </div>
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-stone-100 shrink-0 border border-stone-200 flex items-center justify-center text-ink/40">

@@ -113,6 +113,29 @@ export class ReviewService {
       return { canReview: false };
     }
 
+    // Lazy Check Layer: Auto check-out "aktif" reservations if time passed
+    const activeReservasiList = await this.prisma.reservasi.findMany({
+      where: {
+        memberId,
+        status: 'aktif',
+        detail: { spaceId }
+      }
+    });
+
+    const now = new Date();
+    for (const r of activeReservasiList) {
+      const [hours, minutes] = r.jamSelesai.split(':').map(Number);
+      const endDateTime = new Date(r.tanggalReservasi);
+      endDateTime.setHours(hours, minutes, 0, 0);
+
+      if (now > endDateTime) {
+        await this.prisma.reservasi.update({
+          where: { id: r.id },
+          data: { status: 'selesai', checkOutTime: endDateTime }
+        });
+      }
+    }
+
     // Find a completed reservation for this space that doesn't have a review yet
     const eligibleReservasi = await this.prisma.reservasi.findFirst({
       where: {

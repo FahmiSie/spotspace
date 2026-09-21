@@ -125,7 +125,7 @@ export class PaymentService {
       },
       gopay: {
         enable_callback: true,
-        callback_url: 'http://localhost:3001/reservasi',
+        callback_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/reservasi`,
       },
     };
 
@@ -194,12 +194,34 @@ export class PaymentService {
 
       if (statusResponse.transaction_status === 'settlement' || statusResponse.transaction_status === 'capture') {
         if (reservasi.payment) {
-          await this.prisma.payment.update({
-            where: { id: reservasi.payment.id },
-            data: { status: 'paid', paidAt: new Date(), transactionId: statusResponse.transaction_id },
+          await this.prisma.$transaction(async (tx) => {
+            await tx.payment.update({
+              where: { id: reservasi.payment!.id },
+              data: { status: 'paid', paidAt: new Date(), transactionId: statusResponse.transaction_id },
+            });
+            await tx.reservasi.update({
+              where: { id: reservasi.id },
+              data: { status: 'disetujui' },
+            });
           });
         }
         return { isPaid: true, status: statusResponse.transaction_status };
+      }
+
+      if (statusResponse.transaction_status === 'expire' || statusResponse.transaction_status === 'cancel' || statusResponse.transaction_status === 'deny') {
+        if (reservasi.payment) {
+          await this.prisma.$transaction(async (tx) => {
+            await tx.payment.update({
+              where: { id: reservasi.payment!.id },
+              data: { status: statusResponse.transaction_status === 'expire' ? 'expired' : 'failed' },
+            });
+            await tx.reservasi.update({
+              where: { id: reservasi.id },
+              data: { status: 'dibatalkan' },
+            });
+          });
+        }
+        return { isPaid: false, status: statusResponse.transaction_status };
       }
 
       return { isPaid: false, status: statusResponse.transaction_status };
@@ -230,27 +252,41 @@ export class PaymentService {
     }
 
     if (transaction_status === 'capture' || transaction_status === 'settlement') {
-      await this.prisma.payment.update({
-        where: { midtransOrderId: order_id },
-        data: {
-          status: 'paid',
-          paymentType: payment_type,
-          transactionId: transaction_id,
-          signatureKey: signature_key,
-          paidAt: new Date()
-        }
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { midtransOrderId: order_id },
+          data: {
+            status: 'paid',
+            paymentType: payment_type,
+            transactionId: transaction_id,
+            signatureKey: signature_key,
+            paidAt: new Date()
+          }
+        });
+        
+        await tx.reservasi.update({
+          where: { id: payment.reservasiId },
+          data: { status: 'disetujui' }
+        });
       });
-      console.log(`Payment status updated to paid for order ${order_id}`);
+      console.log(`Payment and Reservasi status updated to paid/disetujui for order ${order_id}`);
     } else if (transaction_status === 'cancel' || transaction_status === 'deny' || transaction_status === 'expire') {
-      await this.prisma.payment.update({
-        where: { midtransOrderId: order_id },
-        data: {
-          status: transaction_status === 'expire' ? 'expired' : 'failed',
-          paymentType: payment_type,
-          transactionId: transaction_id
-        }
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { midtransOrderId: order_id },
+          data: {
+            status: transaction_status === 'expire' ? 'expired' : 'failed',
+            paymentType: payment_type,
+            transactionId: transaction_id
+          }
+        });
+        
+        await tx.reservasi.update({
+          where: { id: payment.reservasiId },
+          data: { status: 'dibatalkan' }
+        });
       });
-      console.log(`Payment status updated to ${transaction_status} for order ${order_id}`);
+      console.log(`Payment and Reservasi status updated to ${transaction_status}/dibatalkan for order ${order_id}`);
     }
 
     return { status: 'ok' };
@@ -277,12 +313,18 @@ export class PaymentService {
     try {
       const settleResponse = await this.coreApi.transaction.settle(reservasi.payment.midtransOrderId);
       
-      await this.prisma.payment.update({
-        where: { id: reservasi.payment.id },
-        data: {
-          status: 'paid',
-          paidAt: new Date(),
-        },
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { id: reservasi.payment!.id },
+          data: {
+            status: 'paid',
+            paidAt: new Date(),
+          },
+        });
+        await tx.reservasi.update({
+          where: { id: reservasi.id },
+          data: { status: 'disetujui' },
+        });
       });
 
       return { success: true, message: 'Payment successfully settled via Sandbox API', data: settleResponse };

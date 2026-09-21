@@ -151,7 +151,7 @@ export default function ETicketPage({ params }: { params: Promise<{ id: string }
                 <div className="border-4 border-stone-800 text-stone-800 px-3 py-1 rounded-lg transform -rotate-12 font-bold tracking-widest text-lg mb-2">COMPLETED</div>
                 <span className="text-[10px] font-semibold text-stone-600 bg-white/80 px-2 py-1 rounded">Checked Out</span>
               </div>
-              <Image src={ticket.qr_code} alt="QR Code" width={160} height={160} className="w-40 h-40 opacity-20 grayscale" />
+              <Image src={ticket.qr_code} alt="QR Code" width={160} height={160} unoptimized className="w-40 h-40 opacity-20 grayscale" />
             </div>
           ) : ticket.status_reservasi === 'aktif' || ticket.status_reservasi === 'disetujui' ? (
             <div className="p-4 bg-white border border-stone rounded-2xl shadow-sm mb-4 relative">
@@ -165,6 +165,7 @@ export default function ETicketPage({ params }: { params: Promise<{ id: string }
                 alt="QR Code Ticket" 
                 width={160} 
                 height={160}
+                unoptimized
                 className="w-40 h-40 relative z-10"
               />
             </div>

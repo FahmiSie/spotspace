@@ -74,22 +74,22 @@ export class SpacesController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin_space')
   @Get('admin/spaces/:id')
-  findOneAdmin(@Param('id', ParseIntPipe) id: number) {
-    return this.spacesService.findOne(id);
+  findOneAdmin(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.spacesService.findOneForAdmin(id, req.user.spaceOwnerId);
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin_space')
   @Put('admin/spaces/:id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSpaceDto) {
-    return this.spacesService.update(id, dto);
+  update(@Param('id', ParseIntPipe) id: number, @Req() req: any, @Body() dto: UpdateSpaceDto) {
+    return this.spacesService.update(id, req.user.spaceOwnerId, dto);
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin_space')
   @Delete('admin/spaces/:id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.spacesService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.spacesService.remove(id, req.user.spaceOwnerId);
   }
 
   // --- Gallery endpoints ---

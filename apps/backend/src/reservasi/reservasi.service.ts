@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReservasiDto } from './dto/create-reservasi.dto';
 import { HistoryQueryDto } from './dto/history-query.dto';
@@ -10,7 +11,47 @@ import { NotifikasiService } from '../notifikasi/notifikasi.service';
 
 @Injectable()
 export class ReservasiService {
+  private readonly logger = new Logger(ReservasiService.name);
+
   constructor(private prisma: PrismaService, private notifikasiService: NotifikasiService) {}
+
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async handleAutoCheckout() {
+    this.logger.log('Running auto check-out cron job...');
+    const now = new Date();
+    
+    // Find all 'berjalan' (aktif) reservations
+    const activeReservations = await this.prisma.reservasi.findMany({
+      where: { status: 'aktif' },
+    });
+
+    let count = 0;
+    for (const r of activeReservations) {
+      // Parse jamSelesai, e.g. "12:00"
+      const [hours, minutes] = r.jamSelesai.split(':').map(Number);
+      
+      // We must compare with the exact date of the reservation
+      // Since tanggalReservasi is stored as Date, we combine it with jamSelesai
+      const endDateTime = new Date(r.tanggalReservasi);
+      endDateTime.setHours(hours, minutes, 0, 0);
+
+      // If current time has passed the endDateTime, auto checkout
+      if (now > endDateTime) {
+        await this.prisma.reservasi.update({
+          where: { id: r.id },
+          data: { 
+            status: 'selesai',
+            checkOutTime: endDateTime // Use the actual end time, or 'now'
+          }
+        });
+        count++;
+      }
+    }
+    
+    if (count > 0) {
+      this.logger.log(`Auto checked-out ${count} reservations.`);
+    }
+  }
 
   async create(memberId: number, dto: CreateReservasiDto) {
     const space = await this.prisma.space.findUnique({ where: { id: dto.id_space }, include: { owner: true } });
@@ -19,34 +60,72 @@ export class ReservasiService {
     const jamSelesai = hitungJamSelesai(dto.jam_mulai, dto.durasi_jam);
     const tanggal = new Date(dto.tanggal_reservasi);
 
-    // Cek overlap (aturan bisnis #1)
+    const tanggalStr = dto.tanggal_reservasi.split('T')[0];
+    const waktuMulaiReservasi = new Date(`${tanggalStr}T${dto.jam_mulai}:00`);
+    const waktuSekarang = new Date();
+
+    if (waktuMulaiReservasi <= waktuSekarang) {
+      throw new BadRequestException('Waktu mulai reservasi tidak boleh di masa lalu.');
+    }
+
+    const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+    // Cek overlap berdasarkan kapasitas (aturan bisnis #1)
     const existingReservasi = await this.prisma.reservasi.findMany({
       where: {
         status: { not: 'dibatalkan' },
         tanggalReservasi: tanggal,
         detail: { spaceId: dto.id_space },
+        NOT: {
+          status: 'belum_dikonfirm',
+          createdAt: { lt: fifteenMinsAgo },
+        },
       },
     });
-    const bentrok = existingReservasi.some((r) =>
-      isOverlap(dto.jam_mulai, jamSelesai, r.jamMulai, r.jamSelesai),
+
+    const overlappingBookings = existingReservasi.filter((r) =>
+      isOverlap(dto.jam_mulai, jamSelesai, r.jamMulai, r.jamSelesai)
     );
-    if (bentrok) {
-      throw new BadRequestException('Space tidak tersedia pada tanggal dan rentang jam tersebut!');
+
+    const maxAllowed = space.tipe === 'desk' ? space.kapasitas : 1;
+
+    if (overlappingBookings.length >= maxAllowed) {
+      const pesan = space.tipe === 'desk'
+        ? `Kapasitas meja telah penuh untuk jam tersebut (Maks: ${space.kapasitas} orang).`
+        : `Ruangan ${space.tipe.replace('_', ' ')} sudah dipesan oleh pengguna lain pada jadwal tersebut.`;
+      throw new BadRequestException(pesan);
     }
 
     // Validasi promo (opsional) — aturan bisnis #4
     let diskon: Diskon | null = null;
     const kodePromo = dto.kode_promo;
+    const now = new Date();
+
     if (dto.id_diskon) {
       diskon = await this.prisma.diskon.findUnique({ where: { id: dto.id_diskon } });
     } else if (kodePromo) {
-      diskon = await this.prisma.diskon.findUnique({ where: { namaDiskon: kodePromo } });
+      diskon = await this.prisma.diskon.findFirst({
+        where: {
+          namaDiskon: kodePromo,
+          tanggalAwal: { lte: now },
+          tanggalAkhir: { gte: now },
+          OR: [
+            { spaceId: null },
+            { spaceId: Number(dto.id_space) },
+          ],
+        },
+      });
+
+      if (!diskon) {
+        throw new BadRequestException('Kode promo tidak valid, kedaluwarsa, atau tidak berlaku untuk lokasi ini.');
+      }
     }
 
     if (diskon) {
-      const now = new Date();
       const valid = diskon.tanggalAwal <= now && diskon.tanggalAkhir >= now;
-      if (!valid) diskon = null; // promo kadaluarsa -> reservasi tetap lanjut tanpa promo
+      if (!valid) {
+        throw new BadRequestException('Kode promo telah kedaluwarsa atau belum aktif');
+      }
     }
 
     // Perhitungan harga (aturan bisnis #3)

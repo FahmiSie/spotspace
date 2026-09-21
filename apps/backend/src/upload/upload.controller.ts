@@ -5,7 +5,9 @@ import {
   UploadedFile,
   UploadedFiles,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -37,6 +39,7 @@ export class UploadController {
   
   // Endpoint untuk single upload (contoh: Avatar)
   @Post()
+  @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('file', multerOptions))
   uploadSingle(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
@@ -50,6 +53,7 @@ export class UploadController {
 
   // Endpoint untuk multiple upload (contoh: Galeri / Tambah Space)
   @Post('multiple')
+  @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FilesInterceptor('files', 10, multerOptions)) // Maksimal 10 file sekaligus
   uploadMultiple(@UploadedFiles() files: Array<Express.Multer.File>) {
     if (!files || files.length === 0) {

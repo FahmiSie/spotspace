@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "@/components/ui/toast";
+import { getAssetUrl } from "@/lib/utils";
 import { z } from "zod";
 import { Plus, Search, Building2, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -61,14 +62,34 @@ const columns: Column<any>[] = [
   {
     key: "namaMember",
     label: "Name",
-    render: (r) => (
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-[#0B0909] text-white flex items-center justify-center font-semibold text-sm shrink-0">
-          {(r.namaMember || "U").charAt(0).toUpperCase()}
+    render: (r) => {
+      const fotoPath = r.user?.foto || r.foto;
+      const avatarUrl = fotoPath ? getAssetUrl(fotoPath) : null;
+      return (
+        <div className="flex items-center gap-3">
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={r.user?.nama || r.namaMember || 'Member'}
+              className="w-10 h-10 rounded-full object-cover shrink-0"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                if (e.currentTarget.nextElementSibling) {
+                  (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                }
+              }}
+            />
+          ) : null}
+          <div 
+            className="w-10 h-10 rounded-full bg-[#0B0909] text-white items-center justify-center font-semibold text-sm shrink-0"
+            style={{ display: avatarUrl ? 'none' : 'flex' }}
+          >
+            {(r.user?.nama || r.namaMember || "U").charAt(0).toUpperCase()}
+          </div>
+          <div className="font-medium text-[#0B0909]">{r.namaMember}</div>
         </div>
-        <div className="font-medium text-[#0B0909]">{r.namaMember}</div>
-      </div>
-    )
+      );
+    }
   },
   { 
     key: "instansi", 

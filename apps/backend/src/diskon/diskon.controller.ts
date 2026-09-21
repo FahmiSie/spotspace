@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ParseIntPipe, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ParseIntPipe, HttpCode, HttpStatus, Req } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { DiskonService } from './diskon.service';
 import { CreateDiskonDto } from './dto/create-diskon.dto';
@@ -31,15 +31,15 @@ export class DiskonController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin_space')
   @Get('admin/diskon')
-  findAll() {
-    return this.diskonService.findAll();
+  findAll(@Req() req: any) {
+    return this.diskonService.findAll(req.user.userId);
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin_space')
   @Post('admin/diskon')
-  create(@Body() dto: CreateDiskonDto) {
-    return this.diskonService.create(dto);
+  create(@Req() req: any, @Body() dto: CreateDiskonDto) {
+    return this.diskonService.create(req.user.userId, dto);
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -52,14 +52,14 @@ export class DiskonController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin_space')
   @Put('admin/diskon/:id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateDiskonDto) {
-    return this.diskonService.update(id, dto);
+  update(@Param('id', ParseIntPipe) id: number, @Req() req: any, @Body() dto: UpdateDiskonDto) {
+    return this.diskonService.update(id, req.user.userId, dto);
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin_space')
   @Delete('admin/diskon/:id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.diskonService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.diskonService.remove(id, req.user.userId);
   }
 }
