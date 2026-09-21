@@ -9,15 +9,15 @@ import { Calendar, Clock, MapPin, Receipt, XCircle } from "lucide-react";
 import { useMyReservasi, useCancelReservasi, StatusReservasi } from "@/lib/hooks/use-reservasi";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Dialog, 
-  DialogTrigger, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogClose 
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose
 } from "@/components/ui/dialog";
 
 const STATUS_STYLES: Record<StatusReservasi, string> = {
@@ -49,7 +49,7 @@ export default function ReservasiPage() {
     try {
       await cancelMutation.mutateAsync(id);
       (toast as any).add({ title: "Reservation cancelled", type: "success" });
-    } catch(err) {}
+    } catch (err) { }
   };
 
   const filteredList = reservasiList?.filter((r) => {
@@ -69,9 +69,8 @@ export default function ReservasiPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`pb-4 whitespace-nowrap text-sm font-bold tracking-wider uppercase transition-colors relative ${
-                activeTab === tab ? "text-flame" : "text-ink hover:text-ink"
-              }`}
+              className={`pb-4 whitespace-nowrap text-sm font-bold tracking-wider uppercase transition-colors relative ${activeTab === tab ? "text-flame" : "text-ink hover:text-ink"
+                }`}
             >
               {tab}
               {activeTab === tab && (
@@ -106,7 +105,7 @@ export default function ReservasiPage() {
                       ID: {r.kode_booking}
                     </span>
                   </div>
-                  
+
                   <div>
                     <h3 className="font-display text-2xl font-bold text-ink">{r.space?.nama_space || "Unknown Space"}</h3>
                     <p className="text-ink text-sm mt-1">{r.space?.tipe || "General Space"}</p>
@@ -135,7 +134,7 @@ export default function ReservasiPage() {
                           <p className="text-stone-600">{r.alasanPenolakan}</p>
                         </div>
                       )}
-                      
+
                       {r.payment?.status === 'refunded' && (
                         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -154,7 +153,7 @@ export default function ReservasiPage() {
                   )}
                 </div>
 
-                <div className="flex flex-row md:flex-col items-center md:items-end gap-3 shrink-0 border-t border-stone pt-4 md:border-t-0 md:pt-0">
+                <div className="flex flex-col md:flex-col items-stretch md:items-end gap-3 shrink-0 border-t border-stone pt-4 md:border-t-0 md:pt-0 w-full md:w-auto">
                   {r.status === "belum_dikonfirm" && r.payment?.status !== 'paid' && (
                     <Link href={`/reservasi/${r.id}`} className="w-full md:w-auto">
                       <Button className="w-full md:w-auto bg-[#EF6905] hover:bg-[#EF6905]/90 text-white rounded-xl font-bold">
@@ -196,9 +195,9 @@ export default function ReservasiPage() {
                         <DialogFooter className="mt-6">
                           <DialogClose render={<Button variant="outline" className="rounded-xl font-bold">Go Back</Button>} />
                           <DialogClose render={
-                            <Button 
-                              variant="destructive" 
-                              className="rounded-xl font-bold bg-destructive text-white" 
+                            <Button
+                              variant="destructive"
+                              className="rounded-xl font-bold bg-destructive text-white"
                               onClick={() => handleCancel(r.id)}
                               disabled={cancelMutation.isPending}
                             >

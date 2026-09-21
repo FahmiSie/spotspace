@@ -123,7 +123,7 @@ export default function ETicketPage({ params }: { params: Promise<{ id: string }
         <div className="bg-ink p-8 text-center text-white relative">
           <h2 className="font-display font-bold text-2xl mb-1">{ticket.coworking_space.nama}</h2>
           <p className="text-white/60 text-sm font-medium">{ticket.space.nama}</p>
-          
+
           {/* Jagged edge effect (Optional via CSS or SVG in the future) */}
           <div className="absolute -bottom-3 left-0 w-full flex justify-around overflow-hidden h-6 opacity-20">
             {Array.from({ length: 20 }).map((_, i) => (
@@ -160,10 +160,10 @@ export default function ETicketPage({ params }: { params: Promise<{ id: string }
                   Active Pass
                 </div>
               )}
-              <Image 
-                src={ticket.qr_code} 
-                alt="QR Code Ticket" 
-                width={160} 
+              <Image
+                src={ticket.qr_code}
+                alt="QR Code Ticket"
+                width={160}
                 height={160}
                 unoptimized
                 className="w-40 h-40 relative z-10"
@@ -175,13 +175,13 @@ export default function ETicketPage({ params }: { params: Promise<{ id: string }
               <p className="text-[10px] text-stone-500">Check-in QR will appear once payment is approved.</p>
             </div>
           )}
-          
+
           <p className="font-mono font-bold text-xl tracking-[0.2em] text-ink">{ticket.kode_booking}</p>
           <p className="text-ink text-xs font-medium mt-1 text-center max-w-[200px]">
             {ticket.status_reservasi === 'disetujui' ? "Present this QR code upon arrival to check in." :
-             ticket.status_reservasi === 'aktif' ? "Pass active. Present this QR code when leaving to check out." :
-             ticket.status_reservasi === 'selesai' ? "Session completed. Thank you for visiting!" :
-             "Waiting for payment"}
+              ticket.status_reservasi === 'aktif' ? "Pass active. Present this QR code when leaving to check out." :
+                ticket.status_reservasi === 'selesai' ? "Session completed. Thank you for visiting!" :
+                  "Waiting for payment"}
           </p>
         </div>
 
@@ -229,27 +229,27 @@ export default function ETicketPage({ params }: { params: Promise<{ id: string }
 
       {/* Action Buttons */}
       <div className="w-full max-w-md mt-8 flex gap-4">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="flex-1 rounded-xl bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white"
           onClick={handleShare}
         >
           <Share2 className="w-4 h-4 mr-2" />
           Share
         </Button>
-        <button 
+        <button
           onClick={handleDownloadTicket}
           disabled={isDownloading}
           className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-sm transition-all cursor-pointer"
         >
           {isDownloading ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin"/>
+              <Loader2 className="w-4 h-4 animate-spin" />
               <span>Generating Image...</span>
             </>
           ) : (
             <>
-              <Download className="w-4 h-4"/>
+              <Download className="w-4 h-4" />
               <span>Download E-Ticket</span>
             </>
           )}

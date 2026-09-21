@@ -13,13 +13,13 @@ import { NotifikasiService } from '../notifikasi/notifikasi.service';
 export class ReservasiService {
   private readonly logger = new Logger(ReservasiService.name);
 
-  constructor(private prisma: PrismaService, private notifikasiService: NotifikasiService) {}
+  constructor(private prisma: PrismaService, private notifikasiService: NotifikasiService) { }
 
   @Cron(CronExpression.EVERY_10_MINUTES)
   async handleAutoCheckout() {
     this.logger.log('Running auto check-out cron job...');
     const now = new Date();
-    
+
     // Find all 'berjalan' (aktif) reservations
     const activeReservations = await this.prisma.reservasi.findMany({
       where: { status: 'aktif' },
@@ -29,7 +29,7 @@ export class ReservasiService {
     for (const r of activeReservations) {
       // Parse jamSelesai, e.g. "12:00"
       const [hours, minutes] = r.jamSelesai.split(':').map(Number);
-      
+
       // We must compare with the exact date of the reservation
       // Since tanggalReservasi is stored as Date, we combine it with jamSelesai
       const endDateTime = new Date(r.tanggalReservasi);
@@ -39,7 +39,7 @@ export class ReservasiService {
       if (now > endDateTime) {
         await this.prisma.reservasi.update({
           where: { id: r.id },
-          data: { 
+          data: {
             status: 'selesai',
             checkOutTime: endDateTime // Use the actual end time, or 'now'
           }
@@ -47,7 +47,7 @@ export class ReservasiService {
         count++;
       }
     }
-    
+
     if (count > 0) {
       this.logger.log(`Auto checked-out ${count} reservations.`);
     }
@@ -201,7 +201,7 @@ export class ReservasiService {
   async findMy(memberId: number) {
     const list = await this.prisma.reservasi.findMany({
       where: { memberId },
-      include: { 
+      include: {
         detail: { include: { space: true } },
         payment: true,
       },
@@ -356,212 +356,212 @@ export class ReservasiService {
     };
   }
   async findAllForAdmin(spaceOwnerId: number, query: AdminReservasiQueryDto) {
-  const where: any = {
-    detail: { space: { ownerId: spaceOwnerId } },
-  };
-
-  if (query.status) where.status = query.status;
-  if (query.id_space) where.detail = { ...where.detail, spaceId: query.id_space };
-  if (query.tanggal) {
-    where.tanggalReservasi = new Date(query.tanggal);
-  } else if (query.month || query.year) {
-    const now = new Date();
-    const month = query.month ?? now.getMonth() + 1;
-    const year = query.year ?? now.getFullYear();
-    where.tanggalReservasi = {
-      gte: new Date(year, month - 1, 1),
-      lt: new Date(year, month, 1),
+    const where: any = {
+      detail: { space: { ownerId: spaceOwnerId } },
     };
-  }
 
-  const list = await this.prisma.reservasi.findMany({
-    where,
-    include: { member: true, payment: true, detail: { include: { space: true } } },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  return list.map((r) => ({
-    id: r.id,
-    kode_booking: r.kodeBooking,
-    tanggal_reservasi: r.tanggalReservasi,
-    jam_mulai: r.jamMulai,
-    jam_selesai: r.jamSelesai,
-    durasi_jam: r.durasiJam,
-    total_harga_awal: r.detail?.totalHargaAwal,
-    potongan_diskon: r.detail?.potonganDiskon,
-    total_bayar: r.detail?.totalBayar,
-    status: r.status,
-    alasanPenolakan: r.alasanPenolakan,
-    payment: r.payment ? { status: r.payment.status } : null,
-    member: { id: r.member.id, nama_member: r.member.namaMember, telp: r.member.telp },
-    space: r.detail?.space
-      ? { id: r.detail.space.id, nama_space: r.detail.space.namaSpace, tipe: r.detail.space.tipe }
-      : null,
-  }));
-}
-
-async updateStatus(id: number, spaceOwnerId: number, status: string, alasanPenolakan?: string) {
-  const r = await this.findOneRaw(id);
-  this.assertOwnership(r, spaceOwnerId);
-
-  const transisiValid: Record<string, string[]> = {
-    belum_dikonfirm: ['disetujui', 'dibatalkan'],
-    menunggu_persetujuan: ['disetujui', 'dibatalkan'],
-    disetujui: ['dibatalkan'],
-  };
-  if (!transisiValid[r.status]?.includes(status)) {
-    throw new BadRequestException(`Tidak bisa mengubah status dari ${r.status} ke ${status}`);
-  }
-
-  if (status === 'disetujui') {
-    if (!r.payment || r.payment.status !== 'paid') {
-      throw new BadRequestException('Reservasi belum dibayar, tidak bisa dikonfirmasi');
+    if (query.status) where.status = query.status;
+    if (query.id_space) where.detail = { ...where.detail, spaceId: query.id_space };
+    if (query.tanggal) {
+      where.tanggalReservasi = new Date(query.tanggal);
+    } else if (query.month || query.year) {
+      const now = new Date();
+      const month = query.month ?? now.getMonth() + 1;
+      const year = query.year ?? now.getFullYear();
+      where.tanggalReservasi = {
+        gte: new Date(year, month - 1, 1),
+        lt: new Date(year, month, 1),
+      };
     }
+
+    const list = await this.prisma.reservasi.findMany({
+      where,
+      include: { member: true, payment: true, detail: { include: { space: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return list.map((r) => ({
+      id: r.id,
+      kode_booking: r.kodeBooking,
+      tanggal_reservasi: r.tanggalReservasi,
+      jam_mulai: r.jamMulai,
+      jam_selesai: r.jamSelesai,
+      durasi_jam: r.durasiJam,
+      total_harga_awal: r.detail?.totalHargaAwal,
+      potongan_diskon: r.detail?.potonganDiskon,
+      total_bayar: r.detail?.totalBayar,
+      status: r.status,
+      alasanPenolakan: r.alasanPenolakan,
+      payment: r.payment ? { status: r.payment.status } : null,
+      member: { id: r.member.id, nama_member: r.member.namaMember, telp: r.member.telp },
+      space: r.detail?.space
+        ? { id: r.detail.space.id, nama_space: r.detail.space.namaSpace, tipe: r.detail.space.tipe }
+        : null,
+    }));
   }
 
-  if (status === 'dibatalkan') {
-    if (r.payment && r.payment.status === 'paid') {
-      await this.prisma.payment.update({
-        where: { id: r.payment.id },
-        data: {
-          status: 'refunded',
-          updatedAt: new Date(),
-        },
-      });
+  async updateStatus(id: number, spaceOwnerId: number, status: string, alasanPenolakan?: string) {
+    const r = await this.findOneRaw(id);
+    this.assertOwnership(r, spaceOwnerId);
+
+    const transisiValid: Record<string, string[]> = {
+      belum_dikonfirm: ['disetujui', 'dibatalkan'],
+      menunggu_persetujuan: ['disetujui', 'dibatalkan'],
+      disetujui: ['dibatalkan'],
+    };
+    if (!transisiValid[r.status]?.includes(status)) {
+      throw new BadRequestException(`Tidak bisa mengubah status dari ${r.status} ke ${status}`);
     }
+
+    if (status === 'disetujui') {
+      if (!r.payment || r.payment.status !== 'paid') {
+        throw new BadRequestException('Reservasi belum dibayar, tidak bisa dikonfirmasi');
+      }
+    }
+
+    if (status === 'dibatalkan') {
+      if (r.payment && r.payment.status === 'paid') {
+        await this.prisma.payment.update({
+          where: { id: r.payment.id },
+          data: {
+            status: 'refunded',
+            updatedAt: new Date(),
+          },
+        });
+      }
+    }
+
+    const updated = await this.prisma.reservasi.update({
+      where: { id },
+      data: {
+        status: status as any,
+        ...(alasanPenolakan && status === 'dibatalkan' ? { alasanPenolakan } : {})
+      },
+    });
+
+    // Trigger notifikasi (Sub-Fase 6)
+    if (status === 'disetujui') {
+      await this.notifikasiService.createSafe(
+        r.member.userId,
+        'reservasi_dikonfirmasi',
+        'Reservasi Dikonfirmasi',
+        `Reservasi Anda dengan kode ${r.kodeBooking} telah disetujui.`,
+      );
+    } else if (status === 'dibatalkan') {
+      await this.notifikasiService.createSafe(
+        r.member.userId,
+        'reservasi_dibatalkan',
+        'Reservasi Dibatalkan',
+        `Reservasi Anda dengan kode ${r.kodeBooking} telah dibatalkan.`,
+      );
+    }
+
+    return { id: updated.id, status: updated.status, updated_at: updated.updatedAt };
   }
 
-  const updated = await this.prisma.reservasi.update({
-    where: { id },
-    data: { 
-      status: status as any,
-      ...(alasanPenolakan && status === 'dibatalkan' ? { alasanPenolakan } : {})
-    },
-  });
+  async checkIn(id: number, spaceOwnerId: number) {
+    const r = await this.findOneRaw(id);
+    this.assertOwnership(r, spaceOwnerId);
 
-  // Trigger notifikasi (Sub-Fase 6)
-  if (status === 'disetujui') {
+    if (r.status !== 'disetujui') {
+      throw new BadRequestException('Reservasi harus berstatus "disetujui" sebelum check-in');
+    }
+
+    const updated = await this.prisma.reservasi.update({
+      where: { id },
+      data: { status: 'aktif', checkInTime: new Date() },
+    });
+
+    // Trigger notifikasi (Sub-Fase 6)
     await this.notifikasiService.createSafe(
       r.member.userId,
-      'reservasi_dikonfirmasi',
-      'Reservasi Dikonfirmasi',
-      `Reservasi Anda dengan kode ${r.kodeBooking} telah disetujui.`,
+      'check_in',
+      'Check-in Berhasil',
+      `Anda telah berhasil check-in untuk reservasi ${r.kodeBooking}.`,
     );
-  } else if (status === 'dibatalkan') {
+
+    return { id: updated.id, status: updated.status, check_in_time: updated.checkInTime };
+  }
+
+  async checkOut(id: number, spaceOwnerId: number) {
+    const r = await this.findOneRaw(id);
+    this.assertOwnership(r, spaceOwnerId);
+
+    if (r.status !== 'aktif') {
+      throw new BadRequestException('Reservasi harus berstatus "aktif" sebelum check-out');
+    }
+
+    const updated = await this.prisma.reservasi.update({
+      where: { id },
+      data: { status: 'selesai', checkOutTime: new Date() },
+    });
+
+    // Trigger notifikasi (Sub-Fase 6)
     await this.notifikasiService.createSafe(
       r.member.userId,
-      'reservasi_dibatalkan',
-      'Reservasi Dibatalkan',
-      `Reservasi Anda dengan kode ${r.kodeBooking} telah dibatalkan.`,
+      'check_out',
+      'Check-out Berhasil',
+      `Anda telah berhasil check-out untuk reservasi ${r.kodeBooking}. Terima kasih!`,
     );
+
+    return { id: updated.id, status: updated.status, check_out_time: updated.checkOutTime };
   }
 
-  return { id: updated.id, status: updated.status, updated_at: updated.updatedAt };
-}
+  async processQrScan(code: string, spaceOwnerId: number) {
+    const cleanCode = code.trim();
+    const reservasi = await this.prisma.reservasi.findFirst({
+      where: {
+        OR: [
+          { kodeBooking: cleanCode },
+          { id: isNaN(Number(cleanCode)) ? undefined : Number(cleanCode) }
+        ]
+      },
+      include: {
+        member: true,
+        detail: { include: { space: true } }
+      }
+    });
 
-async checkIn(id: number, spaceOwnerId: number) {
-  const r = await this.findOneRaw(id);
-  this.assertOwnership(r, spaceOwnerId);
-
-  if (r.status !== 'disetujui') {
-    throw new BadRequestException('Reservasi harus berstatus "disetujui" sebelum check-in');
-  }
-
-  const updated = await this.prisma.reservasi.update({
-    where: { id },
-    data: { status: 'aktif', checkInTime: new Date() },
-  });
-
-  // Trigger notifikasi (Sub-Fase 6)
-  await this.notifikasiService.createSafe(
-    r.member.userId,
-    'check_in',
-    'Check-in Berhasil',
-    `Anda telah berhasil check-in untuk reservasi ${r.kodeBooking}.`,
-  );
-
-  return { id: updated.id, status: updated.status, check_in_time: updated.checkInTime };
-}
-
-async checkOut(id: number, spaceOwnerId: number) {
-  const r = await this.findOneRaw(id);
-  this.assertOwnership(r, spaceOwnerId);
-
-  if (r.status !== 'aktif') {
-    throw new BadRequestException('Reservasi harus berstatus "aktif" sebelum check-out');
-  }
-
-  const updated = await this.prisma.reservasi.update({
-    where: { id },
-    data: { status: 'selesai', checkOutTime: new Date() },
-  });
-
-  // Trigger notifikasi (Sub-Fase 6)
-  await this.notifikasiService.createSafe(
-    r.member.userId,
-    'check_out',
-    'Check-out Berhasil',
-    `Anda telah berhasil check-out untuk reservasi ${r.kodeBooking}. Terima kasih!`,
-  );
-
-  return { id: updated.id, status: updated.status, check_out_time: updated.checkOutTime };
-}
-
-async processQrScan(code: string, spaceOwnerId: number) {
-  const cleanCode = code.trim();
-  const reservasi = await this.prisma.reservasi.findFirst({
-    where: {
-      OR: [
-        { kodeBooking: cleanCode },
-        { id: isNaN(Number(cleanCode)) ? undefined : Number(cleanCode) }
-      ]
-    },
-    include: {
-      member: true,
-      detail: { include: { space: true } }
+    if (!reservasi) {
+      throw new NotFoundException('Tiket reservasi tidak valid atau tidak ditemukan.');
     }
-  });
 
-  if (!reservasi) {
-    throw new NotFoundException('Tiket reservasi tidak valid atau tidak ditemukan.');
+    this.assertOwnership(reservasi, spaceOwnerId);
+
+    if (reservasi.status === 'disetujui') {
+      const res = await this.checkIn(reservasi.id, spaceOwnerId);
+      return {
+        action: 'check_in',
+        message: `Check-in berhasil! Selamat datang, ${reservasi.member?.namaMember || 'Member'}.`,
+        data: res
+      };
+    }
+
+    if (reservasi.status === 'aktif') {
+      const res = await this.checkOut(reservasi.id, spaceOwnerId);
+      return {
+        action: 'check_out',
+        message: `Check-out berhasil! Sesi sewa ${reservasi.detail?.space?.namaSpace} telah selesai.`,
+        data: res
+      };
+    }
+
+    if (reservasi.status === 'belum_dikonfirm') {
+      throw new BadRequestException('Pemesanan ini belum disetujui oleh admin.');
+    }
+    if (reservasi.status === 'selesai') {
+      throw new BadRequestException('Tiket reservasi ini sudah selesai digunakan.');
+    }
+    if (reservasi.status === 'dibatalkan') {
+      throw new BadRequestException('Tiket reservasi ini telah dibatalkan.');
+    }
+
+    throw new BadRequestException(`Status reservasi (${reservasi.status}) tidak valid untuk scan.`);
   }
 
-  this.assertOwnership(reservasi, spaceOwnerId);
-
-  if (reservasi.status === 'disetujui') {
-    const res = await this.checkIn(reservasi.id, spaceOwnerId);
-    return {
-      action: 'check_in',
-      message: `Check-in berhasil! Selamat datang, ${reservasi.member?.namaMember || 'Member'}.`,
-      data: res
-    };
+  private assertOwnership(r: any, spaceOwnerId: number) {
+    if (r.detail?.space?.ownerId !== spaceOwnerId) {
+      throw new ForbiddenException('Anda tidak memiliki akses ke reservasi ini');
+    }
   }
-
-  if (reservasi.status === 'aktif') {
-    const res = await this.checkOut(reservasi.id, spaceOwnerId);
-    return {
-      action: 'check_out',
-      message: `Check-out berhasil! Sesi sewa ${reservasi.detail?.space?.namaSpace} telah selesai.`,
-      data: res
-    };
-  }
-
-  if (reservasi.status === 'belum_dikonfirm') {
-    throw new BadRequestException('Pemesanan ini belum disetujui oleh admin.');
-  }
-  if (reservasi.status === 'selesai') {
-    throw new BadRequestException('Tiket reservasi ini sudah selesai digunakan.');
-  }
-  if (reservasi.status === 'dibatalkan') {
-    throw new BadRequestException('Tiket reservasi ini telah dibatalkan.');
-  }
-
-  throw new BadRequestException(`Status reservasi (${reservasi.status}) tidak valid untuk scan.`);
-}
-
-private assertOwnership(r: any, spaceOwnerId: number) {
-  if (r.detail?.space?.ownerId !== spaceOwnerId) {
-    throw new ForbiddenException('Anda tidak memiliki akses ke reservasi ini');
-  }
-}
 }
