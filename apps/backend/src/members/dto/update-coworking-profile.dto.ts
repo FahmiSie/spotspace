@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
 
 export class UpdateCoworkingProfileDto {
   @IsString() @IsNotEmpty()
@@ -15,4 +15,13 @@ export class UpdateCoworkingProfileDto {
 
   @IsString() @IsOptional()
   foto?: string;
+
+  @IsString() @IsOptional()
+  alamat?: string;
+
+  @IsNumber() @IsOptional()
+  latitude?: number;
+
+  @IsNumber() @IsOptional()
+  longitude?: number;
 }

@@ -18,17 +18,20 @@ model SpaceFoto {
 }
 
 model Review {
-  id         Int          @id @default(autoincrement())
-  spaceId    Int
-  space      Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  memberId   Int
-  member     Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  rating     Int // 1-5
-  komentar   String?
-  fotoReview ReviewFoto[]
-  createdAt  DateTime     @default(now())
+  id          Int          @id @default(autoincrement())
+  spaceId     Int
+  space       Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  memberId    Int
+  member      Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  reservasiId Int?         @unique
+  reservasi   Reservasi?   @relation(fields: [reservasiId], references: [id], onDelete: SetNull)
+  rating      Int // 1-5
+  komentar    String?      @db.Text
+  tags        String[]
+  fotoReview  ReviewFoto[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
-  @@unique([spaceId, memberId]) // 1 member cuma bisa review 1x per space
   @@map("review")
 }
 
@@ -95,44 +98,56 @@ enum StatusReservasi {
 }
 
 model User {
-  id         Int          @id @default(autoincrement())
-  username   String       @unique
-  password   String
-  role       Role
-  member     Member?
-  spaceOwner SpaceOwner?
-  notifikasi Notifikasi[]
-  createdAt  DateTime     @default(now())
+  id           Int          @id @default(autoincrement())
+  username     String       @unique
+  email        String?      @unique
+  password     String?
+  googleId     String?      @unique
+  authProvider String       @default("local")
+  role         Role
+  isVerified   Boolean      @default(false)
+  otpCode      String?
+  otpExpiresAt DateTime?
+  member       Member?
+  spaceOwner   SpaceOwner?
+  notifikasi   Notifikasi[]
+  createdAt    DateTime     @default(now())
 
   @@map("users")
 }
 
 model Member {
-  id         Int         @id @default(autoincrement())
-  userId     Int         @unique
-  user       User        @relation(fields: [userId], references: [id])
-  namaMember String
-  instansi   String?
-  alamat     String
-  telp       String
-  foto       String?
-  reservasi  Reservasi[]
-  reviews    Review[]
-  wishlist   Wishlist[]
+  id                Int         @id @default(autoincrement())
+  userId            Int         @unique
+  user              User        @relation(fields: [userId], references: [id])
+  namaMember        String
+  instansi          String?
+  alamat            String
+  telp              String
+  foto              String?
+  createdByOwnerId  Int?
+  createdByOwner    SpaceOwner? @relation("CreatedMembers", fields: [createdByOwnerId], references: [id])
+  reservasi         Reservasi[]
+  reviews           Review[]
+  wishlist          Wishlist[]
 
   @@map("member")
 }
 
 model SpaceOwner {
-  id            Int      @id @default(autoincrement())
-  userId        Int      @unique
-  user          User     @relation(fields: [userId], references: [id])
-  namaCoworking String
-  namaPemilik   String
-  telp          String
-  deskripsi     String?
-  foto          String?
-  spaces        Space[]
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  user            User     @relation(fields: [userId], references: [id])
+  namaCoworking   String
+  namaPemilik     String
+  telp            String
+  deskripsi       String?
+  foto            String?
+  alamat          String?
+  latitude        Float?
+  longitude       Float?
+  spaces          Space[]
+  createdMembers  Member[] @relation("CreatedMembers")
 
   @@map("space_owner")
 }
@@ -179,9 +194,13 @@ model Reservasi {
   status           StatusReservasi  @default(belum_dikonfirm)
   checkInTime      DateTime?
   checkOutTime     DateTime?
+  midtransOrderId  String?
+  alasanPenolakan  String?          @db.Text
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   detail           DetailReservasi?
+  payment          Payment?
+  review           Review?
 
   @@map("reservasi")
 }
@@ -202,15 +221,30 @@ model DetailReservasi {
   @@map("detail_reservasi")
 }
 
-model Maker {
+model Otp {
   id        Int      @id @default(autoincrement())
-  name      String
-  username  String   @unique
-  email     String   @unique
-  password  String
-  appKey    String   @unique
+  email     String
+  code      String   // 4 digit angka (hashed)
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  @@map("maker")
+  @@index([email])
+  @@map("otp")
+}
+
+model Payment {
+  id              Int       @id @default(autoincrement())
+  reservasiId     Int       @unique
+  reservasi       Reservasi @relation(fields: [reservasiId], references: [id], onDelete: Cascade)
+  midtransOrderId String    @unique
+  status          String    @default("pending") // 'pending' | 'paid' | 'failed' | 'expired'
+  grossAmount     Float
+  paymentType     String?
+  transactionId   String?
+  signatureKey    String?   @db.Text
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("payment")
 }

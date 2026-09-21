@@ -29,3 +29,4 @@ uploads/*
 .claude/
 .cursor/
 .devin/
+docs/

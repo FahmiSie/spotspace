@@ -11,12 +11,29 @@ import { ReportsModule } from './reports/reports.module';
 import { ReviewModule } from './review/review.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { NotifikasiModule } from './notifikasi/notifikasi.module';
-import { MakerModule } from './maker/maker.module';
+import { EmailModule } from './email/email.module';
+import { UploadModule } from './upload/upload.module';
+import { PaymentModule } from './payment/payment.module';
+import { GeocodingModule } from './geocoding/geocoding.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, SpaceModule, DiskonModule, ReservasiModule, MembersModule, ReportsModule, ReviewModule, WishlistModule, NotifikasiModule, MakerModule],
+  imports: [
+    AuthModule,
+    PrismaModule,
+    SpaceModule,
+    DiskonModule,
+    ReservasiModule,
+    MembersModule,
+    ReportsModule,
+    ReviewModule,
+    WishlistModule,
+    NotifikasiModule,
+    EmailModule,
+    UploadModule,
+    PaymentModule,
+    GeocodingModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
-

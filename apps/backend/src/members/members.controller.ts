@@ -14,28 +14,28 @@ export class MembersController {
   constructor(private membersService: MembersService) {}
 
   @Get('members')
-  findAll(@Query('search') search?: string) {
-    return this.membersService.findAll(search);
+  findAll(@Req() req: any, @Query('search') search?: string) {
+    return this.membersService.findAll(req.user.spaceOwnerId, search);
   }
 
   @Post('members')
-  create(@Body() dto: CreateMemberAdminDto) {
-    return this.membersService.create(dto);
+  create(@Req() req: any, @Body() dto: CreateMemberAdminDto) {
+    return this.membersService.create(req.user.spaceOwnerId, dto);
   }
 
   @Get('members/:id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.membersService.findOne(id);
+  findOne(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return this.membersService.findOne(id, req.user.spaceOwnerId);
   }
 
   @Put('members/:id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateMemberAdminDto) {
-    return this.membersService.update(id, dto);
+  update(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateMemberAdminDto) {
+    return this.membersService.update(id, req.user.spaceOwnerId, dto);
   }
 
   @Delete('members/:id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.membersService.remove(id);
+  remove(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return this.membersService.remove(id, req.user.spaceOwnerId);
   }
 
   @Get('profile')

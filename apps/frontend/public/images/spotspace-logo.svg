@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 60" width="100%" height="60" fill="none">
+  <!-- ICON GLYPH (S Blueprint & Pin) -->
+  <g transform="translate(4, 6)">
+    <!-- Base Dark Card -->
+    <rect width="48" height="48" rx="10" fill="#0B0909" />
+    
+    <!-- Top Arc of 'S' (Modular Desk Loop) -->
+    <path 
+      d="M36 18H20C16.6863 18 14 20.6863 14 24C14 27.3137 16.6863 30 20 30H28C31.3137 30 34 32.6863 34 36C34 39.3137 31.3137 42 28 42H12" 
+      stroke="#FFFFFF" 
+      stroke-width="3.5" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+    />
+    
+    <!-- Accent 'Spot' (Orange Pin) -->
+    <circle cx="28" cy="18" r="3.5" fill="#EF6905" />
+    
+    <!-- Sub-Accent Partition -->
+    <line x1="14" y1="36" x2="14" y2="38" stroke="#EF6905" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+
+  <!-- WORDMARK TYPOGRAPHY -->
+  <text 
+    x="68" 
+    y="38" 
+    font-family="system-ui, -apple-system, sans-serif" 
+    font-weight="700" 
+    font-size="24" 
+    letter-spacing="-0.03em"
+    fill="#0B0909"
+  >
+    Spot<tspan fill="#EF6905" font-weight="600">Space</tspan>
+  </text>
+</svg>

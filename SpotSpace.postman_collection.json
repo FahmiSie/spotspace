@@ -85,221 +85,6 @@
       ]
     },
     {
-      "name": "Maker",
-      "item": [
-        {
-          "name": "Register Maker",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/maker/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "maker",
-                "register"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"name\": \"Siswa Maker\",\n    \"username\": \"maker_{{$timestamp}}\",\n    \"email\": \"maker_{{$timestamp}}@spotspace.id\",\n    \"password\": \"password123\"\n}"
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(201); });"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        },
-        {
-          "name": "Login Maker",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/maker/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "maker",
-                "login"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"usernameOrEmail\": \"maker_siswa\",\n    \"password\": \"password123\"\n}"
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
-                  "const res = pm.response.json();",
-                  "if (res.accessToken) pm.environment.set(\"maker_token\", res.accessToken);",
-                  "if (res.appKey) pm.environment.set(\"maker_app_key\", res.appKey);",
-                  "pm.environment.set(\"maker_token\", res.access_token || res.accessToken || pm.environment.get(\"maker_token\"));",
-                  "pm.environment.set(\"maker_app_key\", res.app_key || res.appKey || pm.environment.get(\"maker_app_key\"));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get Profile (App Maker)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "x-maker-key",
-                "value": "{{maker_app_key}}",
-                "disabled": false
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/maker/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "maker",
-                "me"
-              ],
-              "query": []
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{maker_token}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(200); });"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get Stats (App Maker)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "x-maker-key",
-                "value": "{{maker_app_key}}",
-                "disabled": true
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/maker/stats",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "maker",
-                "stats"
-              ],
-              "query": []
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{maker_token}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(200); });"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        },
-        {
-          "name": "List All Makers (Guru/Penguji)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/maker/list",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "maker",
-                "list"
-              ],
-              "query": []
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(200); });"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
       "name": "Auth",
       "item": [
         {
@@ -327,7 +112,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"username\": \"member_{{$timestamp}}\",\n    \"password\": \"password123\",\n    \"nama_member\": \"John Doe\",\n    \"instansi\": \"PT ABC\",\n    \"alamat\": \"Jl. Merdeka 1\",\n    \"telp\": \"081234567890\"\n}"
+              "raw": "{\n    \"username\": \"member_{{$timestamp}}\",\n    \"password\": \"password123\",\n    \"nama_member\": \"John Doe\",\n    \"instansi\": \"PT ABC\",\n    \"alamat\": \"Jl. Merdeka 1\",\n    \"telp\": \"081234567890\",\n    \"email\": \"member@example.com\"\n}"
             }
           },
           "response": [],
@@ -336,7 +121,11 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(201); });"
+                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(201); });",
+                  "const body = JSON.parse(pm.request.body.raw);",
+                  "pm.environment.set(\"reg_member_username\", body.username);",
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) pm.environment.set(\"member_token\", res.accessToken);"
                 ],
                 "type": "text/javascript"
               }
@@ -368,7 +157,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"username\": \"admin_{{$timestamp}}\",\n    \"password\": \"password123\",\n    \"namaCoworking\": \"SpotSpace Hub\",\n    \"namaPemilik\": \"Jane Smith\",\n    \"telpon\": \"082345678901\"\n}"
+              "raw": "{\n    \"username\": \"admin_{{$timestamp}}\",\n    \"password\": \"password123\",\n    \"namaCoworking\": \"SpotSpace Hub\",\n    \"namaPemilik\": \"Jane Smith\",\n    \"telpon\": \"082345678901\",\n    \"email\": \"admin@example.com\"\n}"
             }
           },
           "response": [],
@@ -377,7 +166,14 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(201); });"
+                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(201); });",
+                  "const body = JSON.parse(pm.request.body.raw);",
+                  "pm.environment.set(\"reg_admin_username\", body.username);",
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "  pm.environment.set(\"token\", res.accessToken);",
+                  "  pm.environment.set(\"admin_token\", res.accessToken);",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
@@ -408,7 +204,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"username\": \"admin1\",\n    \"password\": \"password123\"\n}"
+              "raw": "{\n    \"password\": \"password123\",\n    \"identifier\": \"{{reg_admin_username}}\"\n}"
             }
           },
           "response": [],
@@ -453,7 +249,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"username\": \"member1\",\n    \"password\": \"password123\"\n}"
+              "raw": "{\n    \"password\": \"password123\",\n    \"identifier\": \"{{reg_member_username}}\"\n}"
             }
           },
           "response": [],
@@ -513,6 +309,113 @@
               }
             }
           ]
+        },
+        {
+          "name": "Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/otp/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "otp",
+                "send"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"test@example.com\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/otp/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "otp",
+                "verify"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"test@example.com\",\n    \"code\": \"123456\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Google Auth",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google"
+              ],
+              "query": []
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Resend OTP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"member@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/resend-account-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "resend-account-otp"
+              ]
+            }
+          }
         }
       ]
     },
@@ -937,6 +840,56 @@
               "script": {
                 "exec": [
                   "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(200); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search Nearest Spaces",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/spaces?lat=-7.9797&lng=112.6304&radius=10&sort=nearest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "spaces"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "-7.9797"
+                },
+                {
+                  "key": "lng",
+                  "value": "112.6304"
+                },
+                {
+                  "key": "radius",
+                  "value": "10"
+                },
+                {
+                  "key": "sort",
+                  "value": "nearest"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "const res = pm.response.json();",
+                  "pm.test(\"Response is array\", () => pm.expect(res).to.be.an(\"array\"));",
+                  "if(res.length > 0) { pm.test(\"Has jarak_km field\", () => pm.expect(res[0]).to.have.property(\"jarak_km\")); }"
                 ],
                 "type": "text/javascript"
               }
@@ -2112,7 +2065,98 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"nama_coworking\": \"Updated Coworking Name\",\n    \"nama_pemilik\": \"Updated Pemilik\",\n    \"telp\": \"081234567890\",\n    \"foto\": \"https://example.com/foto.jpg\"\n}"
+              "raw": "{\n    \"nama_coworking\": \"Updated Coworking Name\",\n    \"nama_pemilik\": \"Updated Pemilik\",\n    \"telp\": \"081234567890\",\n    \"alamat\": \"Jl. Soekarno Hatta No.9, Malang\",\n    \"latitude\": -7.9797,\n    \"longitude\": 112.6304,\n    \"foto\": \"https://example.com/foto.jpg\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(200); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Member Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/member/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "member",
+                "profile"
+              ],
+              "query": []
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{member_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is correct\", function () { pm.expect(pm.response.code).to.equal(200); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Member Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/member/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "member",
+                "profile"
+              ],
+              "query": []
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{member_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nama_member\": \"Updated Name\",\n    \"telp\": \"081234567890\",\n    \"instansi\": \"Updated Company\"\n}"
             }
           },
           "response": [],
@@ -2815,6 +2859,305 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "Member Isolation Test",
+      "item": [
+        {
+          "name": "Register Admin A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 or 400 (if exists)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 400, 409]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin_a@test.com\",\n    \"email\": \"admin_a@test.com\",\n    \"password\": \"password123\",\n    \"nama_coworking\": \"Coworking A\",\n    \"nama_pemilik\": \"Owner A\",\n    \"telp\": \"081111111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register/admin-space",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register",
+                "admin-space"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login Admin A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set(\"adminTokenA\", jsonData.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"identifier\": \"admin_a@test.com\",\n    \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Member by Admin A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 or 409 (if exists)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 409]);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (pm.response.code === 201) {",
+                  "    pm.environment.set(\"memberIdA\", jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminTokenA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"member_a@test.com\",\n    \"password\": \"password123\",\n    \"nama_member\": \"Member A\",\n    \"instansi\": \"Company A\",\n    \"alamat\": \"Jl. A\",\n    \"telp\": \"082222222\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "members"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register Admin B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 or 400/409 (if exists)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 400, 409]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin_b@test.com\",\n    \"email\": \"admin_b@test.com\",\n    \"password\": \"password123\",\n    \"nama_coworking\": \"Coworking B\",\n    \"nama_pemilik\": \"Owner B\",\n    \"telp\": \"083333333\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register/admin-space",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register",
+                "admin-space"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login Admin B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set(\"adminTokenB\", jsonData.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"identifier\": \"admin_b@test.com\",\n    \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Members by Admin B (Should not see Member A)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Member A should not be in list\", function () {",
+                  "    var memberA = pm.environment.get(\"memberIdA\");",
+                  "    var found = jsonData.find(m => m.id === memberA);",
+                  "    pm.expect(found).to.be.undefined;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminTokenB}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "members"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Member A by Admin B (Should be 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 403\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminTokenB}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/members/{{memberIdA}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "members",
+                "{{memberIdA}}"
+              ]
+            }
+          }
         }
       ]
     }

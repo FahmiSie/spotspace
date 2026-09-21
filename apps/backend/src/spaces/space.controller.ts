@@ -29,12 +29,26 @@ export class SpacesController {
     @Query('min_harga') minHarga?: string,
     @Query('max_harga') maxHarga?: string,
     @Query('min_kapasitas') minKapasitas?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('radius') radius?: string,
+    @Query('sort') sort?: string,
   ) {
-    return this.spacesService.findAll(tipe, search, {
-      minHarga: minHarga ? Number(minHarga) : undefined,
-      maxHarga: maxHarga ? Number(maxHarga) : undefined,
-      minKapasitas: minKapasitas ? Number(minKapasitas) : undefined,
-    });
+    return this.spacesService.findAll(
+      tipe,
+      search,
+      {
+        minHarga: minHarga ? Number(minHarga) : undefined,
+        maxHarga: maxHarga ? Number(maxHarga) : undefined,
+        minKapasitas: minKapasitas ? Number(minKapasitas) : undefined,
+      },
+      {
+        lat: lat ? Number(lat) : undefined,
+        lng: lng ? Number(lng) : undefined,
+        radius: radius ? Number(radius) : undefined,
+        sort,
+      },
+    );
   }
 
   @Get('spaces/:id')

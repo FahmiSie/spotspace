@@ -1,37 +1,78 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberAdminDto } from './dto/create-member-admin.dto';
 import { UpdateMemberAdminDto } from './dto/update-member-admin.dto';
 import { UpdateCoworkingProfileDto } from './dto/update-coworking-profile.dto';
+import { GeocodingService } from '../geocoding/geocoding.service';
 
 @Injectable()
 export class MembersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private geocodingService: GeocodingService,
+  ) {}
 
-  async findAll(search?: string) {
-    return this.prisma.member.findMany({
-      where: search
-        ? {
-            OR: [
-              { namaMember: { contains: search, mode: 'insensitive' } },
-              { instansi: { contains: search, mode: 'insensitive' } },
-              { telp: { contains: search, mode: 'insensitive' } },
-            ],
-          }
-        : undefined,
-    });
+  /**
+   * Build the Prisma OR condition that scopes members to an admin:
+   * - Member was created by this admin (createdByOwnerId === ownerId)
+   * - Member has at least 1 reservation at a space owned by this admin
+   */
+  private scopeCondition(ownerId: number) {
+    return [
+      { createdByOwnerId: ownerId },
+      {
+        reservasi: {
+          some: {
+            detail: {
+              space: { ownerId },
+            },
+          },
+        },
+      },
+    ];
   }
 
-  async findOne(id: number) {
+  async findAll(ownerId: number, search?: string) {
+    const where: any = {
+      OR: this.scopeCondition(ownerId),
+    };
+
+    if (search) {
+      where.AND = {
+        OR: [
+          { namaMember: { contains: search, mode: 'insensitive' } },
+          { instansi: { contains: search, mode: 'insensitive' } },
+          { telp: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    return this.prisma.member.findMany({ where });
+  }
+
+  async findOne(id: number, ownerId: number) {
     const member = await this.prisma.member.findUnique({ where: { id } });
-    if (!member) throw new NotFoundException('Member dengan ID tersebut tidak ditemukan');
+    if (!member) throw new NotFoundException('Member with this ID was not found');
+
+    // Check scope: member must belong to this admin
+    const scoped = await this.prisma.member.findFirst({
+      where: {
+        id,
+        OR: this.scopeCondition(ownerId),
+      },
+    });
+
+    if (!scoped) {
+      throw new ForbiddenException('You do not have access to this member');
+    }
+
     return member;
   }
 
-  async create(dto: CreateMemberAdminDto) {
+  async create(ownerId: number, dto: CreateMemberAdminDto) {
     const existing = await this.prisma.user.findUnique({ where: { username: dto.username } });
-    if (existing) throw new ConflictException('Username sudah digunakan oleh akun lain!');
+    if (existing) throw new ConflictException('Username is already taken!');
 
     const hashed = await bcrypt.hash(dto.password, 10);
 
@@ -47,6 +88,7 @@ export class MembersService {
             alamat: dto.alamat,
             telp: dto.telp,
             foto: dto.foto,
+            createdByOwnerId: ownerId,
           },
         },
       },
@@ -56,8 +98,9 @@ export class MembersService {
     return user.member;
   }
 
-  async update(id: number, dto: UpdateMemberAdminDto) {
-    const member = await this.findOne(id);
+  async update(id: number, ownerId: number, dto: UpdateMemberAdminDto) {
+    // Authorization check — throws 403 if not in scope
+    const member = await this.findOne(id, ownerId);
 
     if (dto.password) {
       const hashed = await bcrypt.hash(dto.password, 10);
@@ -76,12 +119,13 @@ export class MembersService {
     });
   }
 
-  async remove(id: number) {
-    const member = await this.findOne(id);
+  async remove(id: number, ownerId: number) {
+    // Authorization check — throws 403 if not in scope
+    const member = await this.findOne(id, ownerId);
 
     const countReservasi = await this.prisma.reservasi.count({ where: { memberId: id } });
     if (countReservasi > 0) {
-      throw new BadRequestException('Member tidak dapat dihapus karena memiliki histori reservasi');
+      throw new BadRequestException('Cannot delete member with reservation history');
     }
 
     await this.prisma.member.delete({ where: { id } });
@@ -91,13 +135,30 @@ export class MembersService {
 
   // --- Profil Lokasi Coworking ---
   async getProfile(spaceOwnerId: number) {
-    const profile = await this.prisma.spaceOwner.findUnique({ where: { id: spaceOwnerId } });
-    if (!profile) throw new NotFoundException('Profil coworking tidak ditemukan');
+    const profile = await this.prisma.spaceOwner.findUnique({
+      where: { id: spaceOwnerId },
+      include: {
+        user: { select: { username: true, email: true } }
+      }
+    });
+    if (!profile) throw new NotFoundException('Coworking profile not found');
     return profile;
   }
 
   async updateProfile(spaceOwnerId: number, dto: UpdateCoworkingProfileDto) {
     await this.getProfile(spaceOwnerId);
+
+    let latitude = dto.latitude;
+    let longitude = dto.longitude;
+
+    if (dto.alamat && latitude === undefined && longitude === undefined) {
+      const coords = await this.geocodingService.geocodeAddress(dto.alamat);
+      if (coords) {
+        latitude = coords.lat;
+        longitude = coords.lng;
+      }
+    }
+
     return this.prisma.spaceOwner.update({
       where: { id: spaceOwnerId },
       data: {
@@ -106,7 +167,13 @@ export class MembersService {
         telp: dto.telp,
         deskripsi: dto.deskripsi,
         foto: dto.foto,
+        ...(dto.alamat !== undefined && { alamat: dto.alamat }),
+        ...(latitude !== undefined && { latitude }),
+        ...(longitude !== undefined && { longitude }),
       },
+      include: {
+        user: { select: { username: true, email: true } }
+      }
     });
   }
 }

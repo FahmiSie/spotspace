@@ -61,7 +61,7 @@ import { AdminReservasiQueryDto } from './dto/admin-query.dto';
   @UseGuards(RolesGuard)
   @Patch(':id/status')
   updateStatus(@Param('id', ParseIntPipe) id: number, @Req() req: any, @Body() dto: UpdateStatusDto) {
-    return this.reservasiService.updateStatus(id, req.user.spaceOwnerId, dto.status);
+    return this.reservasiService.updateStatus(id, req.user.spaceOwnerId, dto.status, dto.alasan);
   }
 
   @Roles('admin_space')
@@ -76,5 +76,12 @@ import { AdminReservasiQueryDto } from './dto/admin-query.dto';
   @Post(':id/check-out')
   checkOut(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return this.reservasiService.checkOut(id, req.user.spaceOwnerId);
+  }
+
+  @Roles('admin_space')
+  @UseGuards(RolesGuard)
+  @Post('admin/scan')
+  scanQr(@Req() req: any, @Body() body: { code: string }) {
+    return this.reservasiService.processQrScan(body.code, req.user.spaceOwnerId);
   }
 }

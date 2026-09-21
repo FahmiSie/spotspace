@@ -122,7 +122,10 @@ export class ReservasiService {
   async findMy(memberId: number) {
     const list = await this.prisma.reservasi.findMany({
       where: { memberId },
-      include: { detail: { include: { space: true } } },
+      include: { 
+        detail: { include: { space: true } },
+        payment: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
     return list.map((r) => ({
@@ -134,6 +137,8 @@ export class ReservasiService {
       durasi_jam: r.durasiJam,
       total_bayar: r.detail?.totalBayar,
       status: r.status,
+      alasanPenolakan: r.alasanPenolakan,
+      payment: r.payment ? { status: r.payment.status } : null,
       space: r.detail?.space
         ? { id: r.detail.space.id, nama_space: r.detail.space.namaSpace, tipe: r.detail.space.tipe }
         : null,
@@ -171,6 +176,7 @@ export class ReservasiService {
         durasi_jam: r.durasiJam,
         total_bayar: r.detail?.totalBayar,
         status: r.status,
+        alasanPenolakan: r.alasanPenolakan,
         space_name: r.detail?.space?.namaSpace,
       })),
     };
@@ -182,6 +188,7 @@ export class ReservasiService {
       include: {
         member: true,
         detail: { include: { space: { include: { owner: true } }, diskon: true } },
+        payment: true,
       },
     });
     if (!r) throw new NotFoundException('Reservasi dengan ID tersebut tidak ditemukan');
@@ -204,6 +211,7 @@ export class ReservasiService {
       durasi_jam: r.durasiJam,
       total_bayar: r.detail?.totalBayar,
       status: r.status,
+      alasanPenolakan: r.alasanPenolakan,
       member: { nama_member: r.member.namaMember, telp: r.member.telp },
       space: { nama_space: r.detail?.space.namaSpace, harga_per_jam: r.detail?.space.hargaPerJam },
     };
@@ -230,7 +238,7 @@ export class ReservasiService {
       throw new ForbiddenException('Anda tidak memiliki akses ke e-ticket ini');
     }
 
-    const qrPayload = `VERIFY-RESERVASI-${r.id}`;
+    const qrPayload = r.kodeBooking;
     const qrCodeDataUrl = await QRCode.toDataURL(qrPayload);
 
     return {
@@ -289,7 +297,7 @@ export class ReservasiService {
 
   const list = await this.prisma.reservasi.findMany({
     where,
-    include: { member: true, detail: { include: { space: true } } },
+    include: { member: true, payment: true, detail: { include: { space: true } } },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -304,6 +312,8 @@ export class ReservasiService {
     potongan_diskon: r.detail?.potonganDiskon,
     total_bayar: r.detail?.totalBayar,
     status: r.status,
+    alasanPenolakan: r.alasanPenolakan,
+    payment: r.payment ? { status: r.payment.status } : null,
     member: { id: r.member.id, nama_member: r.member.namaMember, telp: r.member.telp },
     space: r.detail?.space
       ? { id: r.detail.space.id, nama_space: r.detail.space.namaSpace, tipe: r.detail.space.tipe }
@@ -311,7 +321,7 @@ export class ReservasiService {
   }));
 }
 
-async updateStatus(id: number, spaceOwnerId: number, status: string) {
+async updateStatus(id: number, spaceOwnerId: number, status: string, alasanPenolakan?: string) {
   const r = await this.findOneRaw(id);
   this.assertOwnership(r, spaceOwnerId);
 
@@ -323,9 +333,30 @@ async updateStatus(id: number, spaceOwnerId: number, status: string) {
     throw new BadRequestException(`Tidak bisa mengubah status dari ${r.status} ke ${status}`);
   }
 
+  if (status === 'disetujui') {
+    if (!r.payment || r.payment.status !== 'paid') {
+      throw new BadRequestException('Reservasi belum dibayar, tidak bisa dikonfirmasi');
+    }
+  }
+
+  if (status === 'dibatalkan') {
+    if (r.payment && r.payment.status === 'paid') {
+      await this.prisma.payment.update({
+        where: { id: r.payment.id },
+        data: {
+          status: 'refunded',
+          updatedAt: new Date(),
+        },
+      });
+    }
+  }
+
   const updated = await this.prisma.reservasi.update({
     where: { id },
-    data: { status: status as any },
+    data: { 
+      status: status as any,
+      ...(alasanPenolakan && status === 'dibatalkan' ? { alasanPenolakan } : {})
+    },
   });
 
   // Trigger notifikasi (Sub-Fase 6)
@@ -394,6 +425,58 @@ async checkOut(id: number, spaceOwnerId: number) {
   );
 
   return { id: updated.id, status: updated.status, check_out_time: updated.checkOutTime };
+}
+
+async processQrScan(code: string, spaceOwnerId: number) {
+  const cleanCode = code.trim();
+  const reservasi = await this.prisma.reservasi.findFirst({
+    where: {
+      OR: [
+        { kodeBooking: cleanCode },
+        { id: isNaN(Number(cleanCode)) ? undefined : Number(cleanCode) }
+      ]
+    },
+    include: {
+      member: true,
+      detail: { include: { space: true } }
+    }
+  });
+
+  if (!reservasi) {
+    throw new NotFoundException('Tiket reservasi tidak valid atau tidak ditemukan.');
+  }
+
+  this.assertOwnership(reservasi, spaceOwnerId);
+
+  if (reservasi.status === 'disetujui') {
+    const res = await this.checkIn(reservasi.id, spaceOwnerId);
+    return {
+      action: 'check_in',
+      message: `Check-in berhasil! Selamat datang, ${reservasi.member?.namaMember || 'Member'}.`,
+      data: res
+    };
+  }
+
+  if (reservasi.status === 'aktif') {
+    const res = await this.checkOut(reservasi.id, spaceOwnerId);
+    return {
+      action: 'check_out',
+      message: `Check-out berhasil! Sesi sewa ${reservasi.detail?.space?.namaSpace} telah selesai.`,
+      data: res
+    };
+  }
+
+  if (reservasi.status === 'belum_dikonfirm') {
+    throw new BadRequestException('Pemesanan ini belum disetujui oleh admin.');
+  }
+  if (reservasi.status === 'selesai') {
+    throw new BadRequestException('Tiket reservasi ini sudah selesai digunakan.');
+  }
+  if (reservasi.status === 'dibatalkan') {
+    throw new BadRequestException('Tiket reservasi ini telah dibatalkan.');
+  }
+
+  throw new BadRequestException(`Status reservasi (${reservasi.status}) tidak valid untuk scan.`);
 }
 
 private assertOwnership(r: any, spaceOwnerId: number) {

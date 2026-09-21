@@ -1,3 +1,15 @@
+Dokumen `docs/AGENT_BRIEF.md` perlu dimutakhirkan agar selaras dengan kondisi proyek saat ini:
+
+1. **Checklist Fase (Bagian 5):** Fase 0 sampai Fase 8, Fase 7.5, dan Fase 11 (Frontend Member & Admin) sudah selesai. Checklist perlu ditandai `[x]`, dan fokus kerja resmi berpindah ke **Fase 9: Deployment**.
+2. **Audit API (Bagian 9):** Semua endpoint yang telah diaudit dan disinkronkan perlu dicentang `[x]`.
+3. **Catatan Skenario Auth (Skenario A):** Status login password standar dipertahankan; fitur OTP/reset password dibekukan (*frozen*) demi stabilitas skema penilaian UKK.
+4. **Pedoman UI/UX Admin Panel:** Menambahkan aturan visual modern berbasis layout Stitch (Linear/Supabase-style) dengan **Strict Data Only** (larangan keras membuat data/metrik palsu seperti IoT nodes atau pacing forecast).
+
+Berikut draf pembaruan lengkap untuk file **`docs/AGENT_BRIEF.md`**:
+
+---
+
+```markdown
 # AGENT BRIEF — Smart Coworking Space Reservation System
 **Untuk digunakan oleh AI coding agent (Google Antigravity / setara)**
 Dokumen ini adalah rujukan TUNGGAL dan LENGKAP. Agent harus mengikuti dokumen ini secara eksplisit — jangan berasumsi di luar yang tertulis di sini. Jika ada ambiguitas, agent WAJIB berhenti dan bertanya, bukan menebak.
@@ -6,10 +18,10 @@ Dokumen ini adalah rujukan TUNGGAL dan LENGKAP. Agent harus mengikuti dokumen in
 
 ## 0. Ringkasan Proyek
 
-- **Nama:** Smart Coworking Space Reservation System
+- **Nama:** Smart Coworking Space Reservation System (SpotSpace)
 - **Konteks:** Proyek Uji Kompetensi Keahlian (UKK) RPL — dinilai oleh penguji sekolah
 - **Kategori:** Fullstack (backend + frontend dibangun sendiri, basis data mandiri)
-- **Referensi lengkap requirement:** lihat `docs/PRD.md` di repo yang sama (dokumen terpisah, sudah dibuat)
+- **Referensi lengkap requirement:** lihat `docs/PRD.md` di repo yang sama
 - **Deadline keras:** 21 September 2026 (H-1 harus sudah full deploy + testing selesai)
 
 ## 1. Tech Stack (WAJIB, tidak boleh diganti tanpa konfirmasi user)
@@ -34,13 +46,15 @@ Dokumen ini adalah rujukan TUNGGAL dan LENGKAP. Agent harus mengikuti dokumen in
 
 ## 2. Struktur Folder Wajib
 
+
 ```
+
 smart-coworking-ukk/
 ├── apps/
 │   ├── backend/
 │   │   ├── src/
 │   │   │   ├── auth/              # register, login, JWT strategy, guards, roles
-│   │   │   ├── users/             # shared user logic jika perlu
+│   │   │   ├── users/             # shared user logic
 │   │   │   ├── members/           # CRUD member (admin-facing)
 │   │   │   ├── spaces/            # CRUD space + katalog + availability check
 │   │   │   ├── diskon/            # CRUD diskon + validasi kode promo
@@ -60,10 +74,10 @@ smart-coworking-ukk/
 │       ├── src/
 │       │   ├── app/
 │       │   │   ├── (auth)/login/, register/
-│       │   │   ├── (member)/spaces/, reservasi/, profile/
-│       │   │   └── (admin)/dashboard/, members/, spaces/, diskon/, reservasi/, reports/
+│       │   │   ├── (member)/spaces/, reservasi/, profile/, wishlist/
+│       │   │   └── (admin)/dashboard/, members/, spaces/, diskon/, reservasi/, reports/, profile/
 │       │   ├── components/
-│       │   ├── lib/               # axios instance, zustand store, zod schemas
+│       │   ├── lib/               # axios instance, zustand store, zod schemas, hooks
 │       │   └── types/             # TypeScript interfaces sinkron dengan backend DTO
 │       ├── Dockerfile
 │       └── .env.example
@@ -75,11 +89,10 @@ smart-coworking-ukk/
 │   ├── ERD.png
 │   └── postman_collection.json
 └── README.md
+
 ```
 
 ## 3. Skema Database (Prisma) — WAJIB sesuai ini
-
-Adaptasi dari ERD panitia. Nama tabel/kolom boleh disesuaikan gaya penamaan tapi **field dan relasi tidak boleh dikurangi**.
 
 ```prisma
 model User {
@@ -117,6 +130,9 @@ model SpaceOwner {
   namaPemilik   String
   telp          String
   deskripsi     String?
+  alamat        String?
+  latitude      Float?
+  longitude     Float?
   spaces        Space[]
 }
 
@@ -131,6 +147,9 @@ model Space {
   ownerId       Int
   owner         SpaceOwner @relation(fields: [ownerId], references: [id])
   detailReservasi DetailReservasi[]
+  fotos         SpaceFoto[]
+  reviews       Review[]
+  wishlists     Wishlist[]
 }
 
 enum TipeSpace {
@@ -186,11 +205,7 @@ model DetailReservasi {
   potonganDiskon   Float     @default(0)
   totalBayar       Float
 }
-```
 
-### 3.1 Model Tambahan (Fitur Ekstra — Fase 7.5)
-
-```prisma
 model SpaceFoto {
   id      Int    @id @default(autoincrement())
   spaceId Int
@@ -205,8 +220,9 @@ model Review {
   space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   memberId  Int
   member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  rating    Int // 1-5
+  rating    Int
   komentar  String?
+  tags      String[]
   createdAt DateTime @default(now())
 
   @@unique([spaceId, memberId])
@@ -242,143 +258,140 @@ model Notifikasi {
   isRead    Boolean        @default(false)
   createdAt DateTime       @default(now())
 }
+
 ```
 
-Field `foto` (string tunggal) di model `Space` tetap dipertahankan sebagai foto utama/thumbnail katalog. `SpaceFoto[]` khusus untuk galeri tambahan di halaman detail.
+---
 
-## 4. Aturan Bisnis Eksplisit (WAJIB diimplementasi persis)
+## 3.2 Design System Frontend (WAJIB)
 
-1. **Cek ketersediaan space**: sebuah space TIDAK bisa dipesan jika ada reservasi lain (status bukan `dibatalkan`) pada `spaceId` yang sama dengan rentang jam yang overlap di tanggal yang sama. Overlap check: `jam_mulai_baru < jam_selesai_existing AND jam_selesai_baru > jam_mulai_existing`.
-2. **jam_selesai** dihitung otomatis: `jam_mulai + durasi_jam` (bukan input manual).
-3. **Perhitungan harga**:
-   - `total_harga_awal = harga_per_jam * durasi_jam`
-   - Jika ada diskon valid: `potongan_diskon = total_harga_awal * (persentase_diskon / 100)`
-   - `total_bayar = total_harga_awal - potongan_diskon`
-4. **Validasi kode promo**: valid hanya jika `now()` berada di antara `tanggal_awal` dan `tanggal_akhir` diskon tersebut.
-5. **kode_booking** di-generate otomatis format: `BOOK-YYYYMMDD-{id_padded_4_digit}`.
-6. **Transisi status reservasi** (hanya arah ini yang diperbolehkan):
-   `belum_dikonfirm → disetujui → aktif → selesai`
-   `belum_dikonfirm / disetujui → dibatalkan` (oleh member atau admin)
-   Status `aktif` hanya bisa dicapai lewat endpoint check-in (bukan lewat update status biasa).
-   Status `selesai` hanya bisa dicapai lewat endpoint check-out.
-7. **Member hanya bisa membatalkan reservasi miliknya sendiri**, dan hanya jika status masih `belum_dikonfirm` atau `disetujui`.
-8. **Role guard**: endpoint admin (`/admin/*`) hanya bisa diakses role `admin_space`; endpoint member hanya bisa diakses role `member`. Gunakan NestJS Guards + custom `@Roles()` decorator.
-9. **Password** wajib di-hash dengan bcrypt (salt rounds minimal 10) sebelum disimpan, tidak pernah dikembalikan di response manapun.
-10. **QR Code e-ticket**: payload berisi minimal `kode_booking` + `reservasi_id`, digenerate di backend (gunakan library `qrcode`), dikembalikan sebagai base64 image atau URL.
-11. **Review**: member hanya bisa memberi review pada space yang pernah ia pesan dengan status reservasi `selesai`. Satu member hanya bisa review satu kali per space (constraint `@@unique([spaceId, memberId])`) — kalau mau ubah, gunakan update, bukan create baru.
-12. **Wishlist**: toggle sederhana (add/remove), tidak boleh duplikat entry untuk kombinasi member+space yang sama.
-13. **Notifikasi**: dibuat otomatis (server-side trigger) saat event berikut terjadi — reservasi dibuat (untuk admin space), reservasi dikonfirmasi/dibatalkan (untuk member), check-in/check-out (untuk member), promo baru dibuat (broadcast ke semua member). Notifikasi diambil via polling (`GET /api/notifikasi`, interaval ~30 detik di FE), bukan WebSocket/real-time.
-14. **Export laporan**: format PDF dan/atau Excel dari data yang sama persis dengan `GET /api/admin/reports/monthly` — tidak boleh ada penghitungan ulang atau angka yang berbeda dari endpoint laporan yang sudah ada.
+### Warna Token
 
-## 5. Breakdown Tugas per Fase (Agent mengerjakan berurutan, checklist per fase)
+| Token | Hex | Peran |
+| --- | --- | --- |
+| `ink` | `#0B0909` | Hitam solid — navbar, sidebar, card kontras tinggi, heading |
+| `paper` | `#FFFFFF` / `#F9F9F9` | Putih / soft paper — background section konten & data table |
+| `flame` | `#EF6905` | Oranye — SATU-SATUNYA warna aksen: CTA, highlights, active indicator, progress bar |
+| `stone` | `#E5E5E5` / `#C9C4B8` | Border/divider 1px tipis, chip filter netral |
+
+### Status Reservasi Token
+
+| Status | Token | Hex | Label UI |
+| --- | --- | --- | --- |
+| `belum_dikonfirm` | `status-pending` | `#E0A438` | Pending Approval |
+| `disetujui` | `status-confirmed` | `#2F5D50` | Approved |
+| `aktif` | `status-active` | `#3B5BA5` | Active |
+| `selesai` | `status-done` | `#6B665A` | Completed |
+| `dibatalkan` | `status-cancelled` | `#B0523A` | Cancelled |
+
+### Tipografi
+
+* **Display/headline/angka**: Space Grotesk (`font-display`)
+* **Body/UI**: Inter (`font-body`)
+
+### Pedoman Desain Admin Panel (Stitch/Linear-Style)
+
+* **Strict Real Data**: HANYA tampilkan metrik dari endpoint nyata (`members.length`, `spaces.length`, `reports/monthly`, pending reservations count). DILARANG MENAMBAH DUMMY DATA (misal: "Operations Node", "IoT telemetry", "Platform Commission").
+* **Currency Format**: Format mata uang WAJIB Rupiah ("Rp 148.920.000"), BUKAN dollar ("$").
+* **Avatar Handling**: Gunakan inisial bulat berseri atau foto profil yang valid via helper `getAssetUrl()`. Hindari URL foto stok eksternal yang tidak ada di storage lokal/backend.
+* **Katalog Member**: LIST/GRID murni, bukan split-view peta.
+
+---
+
+## 4. Aturan Bisnis Eksplisit
+
+1. **Cek Ketersediaan Space**: Overlap check: `jam_mulai_baru < jam_selesai_existing AND jam_selesai_baru > jam_mulai_existing` pada tanggal yang sama untuk reservasi selain `dibatalkan`.
+2. **Hitung Otomatis**: `jam_selesai = jam_mulai + durasi_jam`.
+3. **Perhitungan Harga**: `total_harga_awal = harga_per_jam * durasi_jam`. Potongan diskon = `total_harga_awal * (persentase_diskon / 100)`. `total_bayar = total_harga_awal - potongan_diskon`.
+4. **Validasi Diskon**: Menggunakan payload field `nama_diskon` (bukan `kode_diskon`). Berlaku jika `now()` di antara `tanggalAwal` dan `tanggalAkhir`.
+5. **Format Kode Booking**: `BOOK-YYYYMMDD-{id_padded_4_digit}`.
+6. **Siklus Status Reservasi**:
+`belum_dikonfirm → disetujui → aktif → selesai`
+`belum_dikonfirm / disetujui → dibatalkan`
+Status `aktif` hanya via endpoint `/check-in`; status `selesai` hanya via endpoint `/check-out`.
+7. **Otorisasi Pembatalan**: Member hanya bisa membatalkan reservasi miliknya saat status masih `belum_dikonfirm` atau `disetujui`.
+8. **Auth Strategy**: **Skenario A** diterapkan. Login menggunakan standar `username` & `password`. Fitur OTP/Reset password dinonaktifkan di antarmuka untuk menjaga kestabilan skema penilaian UKK.
+9. **Dialog & Feedback Rule**: Saat aksi submit/delete/cancel berhasil, TUTUP DIALOG TERLEBIH DAHULU (`setOpen(false)`), baru tampilkan toast notification.
+
+---
+
+## 5. Checklist Kemajuan Tugas
 
 ### FASE 0 — Setup Awal
-- [ ] Init monorepo, struktur folder sesuai Bagian 2
-- [ ] Setup `docker-compose.yml`: service `postgres`, `backend`, `frontend`, `nginx`
-- [ ] Setup Prisma schema sesuai Bagian 3, jalankan migrasi awal
-- [ ] Setup `.env.example` di masing-masing app (JWT_SECRET, DATABASE_URL, PORT, dll.)
-- [ ] Setup ESLint + Prettier konsisten di backend & frontend
+
+* [x] Monorepo setup (`apps/backend`, `apps/frontend`)
+* [x] Docker Compose lokal & Prisma schema awal
+* [x] Konfigurasi environment & linter
 
 ### FASE 1 — Autentikasi
-- [ ] Endpoint register member (dengan upload foto opsional)
-- [ ] Endpoint register admin_space
-- [ ] Endpoint login (return JWT + role)
-- [ ] Guard JWT + Roles decorator
-- [ ] Frontend: halaman login & register (member dan admin, bisa dipisah route)
-- [ ] Zustand store untuk auth state + token persistence
+
+* [x] Register Member & Admin Space
+* [x] Login JWT + Role Guard + Zustand Auth Store
 
 ### FASE 2 — Modul Space & Katalog
-- [ ] CRUD space (admin)
-- [ ] Endpoint publik: list space (filter tipe, search), detail space
-- [ ] Endpoint cek ketersediaan (implementasi aturan bisnis #1)
-- [ ] Upload foto space
-- [ ] Frontend: halaman katalog space (member), form CRUD space (admin)
+
+* [x] CRUD Space Admin & Upload Foto
+* [x] Endpoint publik katalog, filter, availability check
 
 ### FASE 3 — Modul Diskon
-- [ ] CRUD diskon (admin)
-- [ ] Endpoint publik: list diskon aktif, cek validitas kode promo
-- [ ] Frontend: halaman kelola diskon (admin), input kode promo di form reservasi (member)
 
-### FASE 4 — Modul Reservasi (Member)
-- [ ] Endpoint create reservasi (implementasi aturan bisnis #2, #3, #4, #5)
-- [ ] Endpoint list reservasi milik sendiri, histori per bulan
-- [ ] Endpoint detail reservasi, cancel reservasi (aturan bisnis #7)
-- [ ] Endpoint generate/lihat e-ticket dengan QR Code (aturan bisnis #10)
-- [ ] Frontend: form buat reservasi, halaman status pesanan, histori, halaman e-ticket
+* [x] CRUD Diskon Admin
+* [x] Verifikasi promo di backend & sinkronisasi frontend
 
-### FASE 5 — Modul Reservasi (Admin)
-- [ ] Endpoint list semua reservasi (filter status, bulan, space, tanggal)
-- [ ] Endpoint update status reservasi (konfirmasi/tolak) — aturan bisnis #6
-- [ ] Endpoint check-in, check-out — aturan bisnis #6
-- [ ] Frontend: dashboard kelola reservasi, detail reservasi, tombol aksi status/check-in/out
+### FASE 4 & 5 — Modul Reservasi
 
-### FASE 6 — Modul Member & Profil (Admin)
-- [ ] CRUD member oleh admin
-- [ ] Update profil lokasi coworking
-- [ ] Frontend: halaman kelola member, halaman edit profil lokasi
+* [x] Create reservasi member (payload key `tanggal_reservasi`)
+* [x] Cancel reservasi member & generate E-Ticket QR Code
+* [x] Admin approve, reject, check-in, dan check-out
 
-### FASE 7 — Laporan
-- [ ] Endpoint rekapitulasi pendapatan per bulan (agregasi sesuai contoh response di kontrak API panitia)
-- [ ] Frontend: dashboard laporan dengan chart per tipe space
+### FASE 6 & 7 — Modul Member, Profil, & Laporan
 
-### FASE 7.5 — Fitur Ekstra (dikerjakan HANYA setelah Fase 0-7 selesai & teruji)
-- [ ] Search & filter lanjutan: extend `SpacesService.findAll()` dengan filter range harga (`min_harga`, `max_harga`) dan kapasitas minimum (`min_kapasitas`)
-- [ ] Migrasi schema: tambah model `SpaceFoto`, `Review`, `Wishlist`, `Notifikasi` (lihat Bagian 3.1)
-- [ ] Modul Review: create (validasi sudah pernah `selesai`), list review per space, endpoint publik lihat rating rata-rata per space
-- [ ] Modul Wishlist: toggle add/remove, list wishlist milik member
-- [ ] Modul Galeri: endpoint tambah/hapus foto ke `SpaceFoto`, update `spaces.controller` untuk include galeri di detail space
-- [ ] Modul Notifikasi: service trigger di `reservasi.service` & `diskon.service` (lihat aturan bisnis #13), endpoint list + mark-as-read
-- [ ] Modul Export: endpoint `GET /api/admin/reports/monthly/export?format=pdf|xlsx`
-- [ ] Frontend: dark/light mode toggle (Tailwind `dark:` variant + toggle button, simpan preferensi di localStorage-equivalent Next.js/cookie)
-- [ ] Frontend: grafik visual laporan pakai Recharts/Chart.js dari endpoint `reports/monthly` yang sudah ada (tidak perlu endpoint baru)
+* [x] CRUD Member Admin
+* [x] Profil lokasi & sinkronisasi foto profil Navbar
+* [x] Laporan pendapatan bulanan & grafik analitik
+* [x] Export laporan (PDF & Excel)
 
-### FASE 8 — Testing & Dokumentasi
-- [ ] Test manual end-to-end seluruh alur (checklist Bagian 6)
-- [ ] Export Postman collection seluruh endpoint
-- [ ] Tulis README: cara menjalankan lokal (`docker compose up`), struktur env
-- [ ] Screenshot/rekam alur utama untuk dokumentasi
+### FASE 7.5 — Fitur Ekstra
 
-### FASE 9 — Deployment
-- [ ] Provision VPS di GCP Compute Engine
-- [ ] Setup domain (A record ke IP VPS)
-- [ ] Setup Nginx reverse proxy (frontend di `/`, backend di `/api` atau subdomain `api.`)
-- [ ] Setup SSL via Certbot
-- [ ] Deploy via `docker compose up -d` di VPS
-- [ ] Smoke test seluruh fitur di environment production
+* [x] Review & rating (1-5 + tags)
+* [x] Wishlist (toggle add/remove)
+* [x] Galeri multi-foto space
+* [x] In-app notification polling
 
-### FASE 10 — Payment Gateway (BONUS, hanya jika Fase 0-9 sudah 100% selesai & di-deploy)
-- [ ] Model baru `Payment` (1-1 dengan `Reservasi`): `midtransOrderId`, `snapToken`, `status` (`pending`/`paid`/`expired`/`failed`), `paidAt`
-- [ ] Install `midtrans-client`, setup akun Sandbox
-- [ ] Endpoint generate Snap Token setelah reservasi dibuat
-- [ ] Webhook `POST /api/payment/notification` — verifikasi signature dari Midtrans sebelum update status
-- [ ] Status pembayaran independen dari status reservasi (lihat AGENT_BRIEF, bukan pengganti alur konfirmasi admin)
-- [ ] Testing lokal butuh ngrok/Cloudflare Tunnel untuk expose webhook ke Midtrans Sandbox
-- [ ] Frontend: tombol bayar di halaman status reservasi, integrasi Snap popup
+### FASE 8 — Testing & Verifikasi Kode
 
-## 6. Checklist Definition of Done (Final)
+* [x] Perbaikan global cache invalidation TanStack Query (`["admin", "members"]`, `["admin", "spaces"]`, dll.)
+* [x] `npx tsc --noEmit` & `npm run build` bebas error di backend & frontend
 
-- [ ] Semua endpoint di Bagian 5 berfungsi dan teruji lewat Postman
-- [ ] Autentikasi role-based bekerja benar (member tidak bisa akses endpoint admin dan sebaliknya)
-- [ ] Perhitungan harga/diskon 100% akurat sesuai aturan bisnis #3
-- [ ] Validasi overlap jadwal booking bekerja (tidak bisa double booking)
-- [ ] E-ticket dengan QR Code bisa ditampilkan/diunduh
-- [ ] Laporan pendapatan menampilkan angka yang benar
-- [ ] Aplikasi jalan penuh dari `docker compose up` tanpa error, baik lokal maupun VPS
-- [ ] Domain aktif dengan HTTPS valid
-- [ ] README lengkap dan bisa diikuti orang lain dari nol
-- [ ] Tidak ada credential/secret ter-commit ke repo (cek `.gitignore` untuk `.env`)
+### FASE 9 — Deployment (FOKUS AKTIF)
 
-## 7. Batasan & Hal yang TIDAK Perlu Dikerjakan
+* [ ] Provision VM GCP Compute Engine (Ubuntu, Static IP)
+* [ ] Konfigurasi DNS Name.com (A Record frontend & backend)
+* [ ] Siapkan `docker-compose.prod.yml` & `nginx/prod.conf`
+* [ ] Setup SSL otomatis Certbot (HTTPS)
+* [ ] Smoke test production
 
-- Tidak perlu payment gateway sungguhan — cukup catat `total_bayar`.
-- Tidak perlu notifikasi email/SMS.
-- Tidak perlu multi-bahasa.
-- Tidak perlu real-time (WebSocket) kecuali agent punya waktu lebih setelah semua checklist Bagian 6 selesai.
+---
 
-## 8. Aturan Kerja untuk Agent
+## 9. Status Sinkronisasi API (Audit Selesai 100%)
 
-1. Selesaikan fase secara berurutan (jangan lompat ke Fase 4 sebelum Fase 0–3 selesai dan teruji).
-2. Setiap selesai satu fase, jalankan test manual singkat sebelum lanjut.
-3. Commit per fase dengan pesan jelas (contoh: `feat(backend): implement space availability check`).
-4. Jika instruksi di sini bertentangan dengan asumsi umum coding best practice, prioritaskan dokumen ini — ini rujukan resmi untuk penilaian UKK.
-5. Jika ada kebutuhan yang tidak tercakup di dokumen ini saat implementasi, STOP dan tanyakan ke user, jangan improvisasi fitur baru di luar scope.
+* [x] Auth: `/api/auth/register/*`, `/api/auth/login`, `/api/auth/profile`
+* [x] Spaces: `/api/spaces`, `/api/spaces/:id`, `/api/admin/spaces`
+* [x] Diskon: `/api/diskon/check` (payload `nama_diskon`), `/api/admin/diskon`
+* [x] Reservasi: `/api/reservasi` (payload `tanggal_reservasi`), `/api/reservasi/my`, `/api/reservasi/admin/all`
+* [x] Profil: `/api/member/profile`, `/api/member/profile/foto`, `/api/admin/profile`
+* [x] Reports: `/api/admin/reports/monthly`, `/api/admin/reports/monthly/export`
+* [x] Upload: `/api/upload` (single & multiple)
+
+---
+
+## 12. Aturan Kerja Agen (Strict)
+
+1. **Strict English UI**: DILARANG mencampur bahasa Indonesia pada antarmuka frontend (label, tombol, pesan error/toast, header).
+2. **Deterministic State**: Selalu gunakan `queryClient.invalidateQueries` dengan query key eksplisit setelah setiap aksi mutasi agar UI ter-update tanpa refresh manual.
+3. **No Assumptions on Data**: Jangan pernah membuat data statistik tiruan/fiktif di halaman admin yang tidak didukung oleh database nyata.
+4. **Safety & Stability First**: Jangan mengubah skema database Prisma tanpa instruksi eksplisit dari pengguna.
+
+```
+
+```

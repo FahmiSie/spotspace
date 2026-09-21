@@ -1,25 +1,35 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Req, ParseIntPipe } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ReviewService } from './review.service';
 import { CreateReviewDto } from './dto/create-review.dto';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
-@Controller('api')
+@Controller('api/reviews')
 export class ReviewController {
-  constructor(private reviewService: ReviewService) {}
+  constructor(private readonly reviewService: ReviewService) {}
 
-  // POST /api/review — role: member
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('member')
-  @Post('review')
-  create(@Req() req: any, @Body() dto: CreateReviewDto) {
-    return this.reviewService.create(req.user.memberId, dto);
+  @UseGuards(AuthGuard('jwt'))
+  @Post()
+  createReview(@Req() req: any, @Body() dto: CreateReviewDto) {
+    return this.reviewService.createReview(req.user.userId, dto);
   }
 
-  // GET /api/spaces/:id/reviews — publik
-  @Get('spaces/:id/reviews')
-  findBySpace(@Param('id', ParseIntPipe) id: number) {
-    return this.reviewService.findBySpace(id);
+  @Get('admin')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('admin_space')
+  getAdminReviews(@Req() req: any) {
+    return this.reviewService.getAdminReviews(req.user.userId);
+  }
+
+  @Get('space/:spaceId')
+  getReviewsBySpace(@Param('spaceId', ParseIntPipe) spaceId: number) {
+    return this.reviewService.getReviewsBySpace(spaceId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('eligibility/:spaceId')
+  checkEligibility(@Req() req: any, @Param('spaceId', ParseIntPipe) spaceId: number) {
+    return this.reviewService.checkReviewEligibility(req.user.userId, spaceId);
   }
 }

@@ -1,23 +1,22 @@
-import { IsString, IsNotEmpty, MinLength } from 'class-validator';
+import { IsString, IsNotEmpty, MinLength, IsEmail } from 'class-validator';
 
 export class RegisterAdminSpaceDto {
-  @IsString()
-  @IsNotEmpty()
+  @IsString() @IsNotEmpty()
   username: string;
 
-  @IsString()
-  @MinLength(6)
+  @IsEmail({}, { message: 'Invalid email address' })
+  @IsNotEmpty()
+  email: string;
+
+  @IsString() @MinLength(6)
   password: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString() @IsNotEmpty()
   namaCoworking: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString() @IsNotEmpty()
   namaPemilik: string;
 
-  @IsString()
-  @IsNotEmpty()
-  telpon: string;
+  @IsString() @IsNotEmpty()
+  telp: string;
 }

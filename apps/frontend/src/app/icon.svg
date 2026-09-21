@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none">
+  <!-- Base Dark Background -->
+  <rect width="32" height="32" rx="7" fill="#0B0909" />
+  
+  <!-- Architectural Monogram 'S' -->
+  <path 
+    d="M23 12H14C11.7909 12 10 13.7909 10 16C10 18.2091 11.7909 20 14 20H18C20.2091 20 22 21.7909 22 24C22 26.2091 20.2091 28 18 28H9" 
+    stroke="#FFFFFF" 
+    stroke-width="3.2" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+  
+  <!-- Focal Orange Spot -->
+  <circle cx="21" cy="7" r="3" fill="#EF6905" />
+</svg>

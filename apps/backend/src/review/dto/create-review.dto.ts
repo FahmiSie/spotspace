@@ -1,23 +1,23 @@
-import { IsInt, IsString, IsOptional, Min, Max, IsArray } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsInt, IsNotEmpty, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateReviewDto {
-  @Type(() => Number)
+  @IsNotEmpty()
   @IsInt()
-  id_space: number;
+  spaceId: number;
 
-  @Type(() => Number)
+  @IsNotEmpty()
+  @IsInt()
+  reservasiId: number;
+
+  @IsNotEmpty()
   @IsInt()
   @Min(1)
   @Max(5)
   rating: number;
 
+  @IsNotEmpty()
   @IsString()
-  @IsOptional()
-  komentar?: string;
-
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  foto_urls?: string[];
+  @MinLength(5)
+  @MaxLength(1000)
+  komentar: string;
 }
