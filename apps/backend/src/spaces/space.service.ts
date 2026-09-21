@@ -228,7 +228,7 @@ export class SpacesService {
     // Ambil semua reservasi aktif, abaikan stale pending (> 15 menit belum bayar)
     const existingReservasi = await this.prisma.reservasi.findMany({
       where: {
-        status: { not: 'dibatalkan' },
+        status: { notIn: ['dibatalkan', 'selesai'] },
         tanggalReservasi: tanggal,
         detail: { spaceId: dto.id_space },
         NOT: {

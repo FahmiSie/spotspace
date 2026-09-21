@@ -247,4 +247,27 @@ export class ReviewService {
       }
     };
   }
+
+  async replyReview(reviewId: number, spaceOwnerId: number, dto: import('./dto/reply-review.dto').ReplyReviewDto) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      include: { space: true }
+    });
+
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+
+    if (review.space.ownerId !== spaceOwnerId) {
+      throw new ForbiddenException('Anda tidak berhak membalas ulasan untuk space ini');
+    }
+
+    return this.prisma.review.update({
+      where: { id: reviewId },
+      data: {
+        balasan: dto.balasan,
+        balasanAt: new Date(),
+      }
+    });
+  }
 }

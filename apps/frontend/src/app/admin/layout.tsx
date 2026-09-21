@@ -294,13 +294,13 @@ export default function AdminLayout({
             </button>
 
             {/* Help button */}
-            <a
-              href="mailto:support@spotspace.my.id"
+            <Link
+              href="/contact"
               title="Help & Support"
               className="p-2 rounded-lg text-[#0B0909] hover:text-[#0B0909] hover:bg-[#E5E5E5]/50 transition-colors"
             >
               <HelpCircle className="w-4 h-4" />
-            </a>
+            </Link>
 
             <div className="w-px h-4 bg-[#E5E5E5] mx-1"></div>
 

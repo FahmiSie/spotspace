@@ -73,7 +73,7 @@ export class ReservasiService {
     // Cek overlap berdasarkan kapasitas (aturan bisnis #1)
     const existingReservasi = await this.prisma.reservasi.findMany({
       where: {
-        status: { not: 'dibatalkan' },
+        status: { notIn: ['dibatalkan', 'selesai'] },
         tanggalReservasi: tanggal,
         detail: { spaceId: dto.id_space },
         NOT: {
@@ -406,6 +406,7 @@ async updateStatus(id: number, spaceOwnerId: number, status: string, alasanPenol
 
   const transisiValid: Record<string, string[]> = {
     belum_dikonfirm: ['disetujui', 'dibatalkan'],
+    menunggu_persetujuan: ['disetujui', 'dibatalkan'],
     disetujui: ['dibatalkan'],
   };
   if (!transisiValid[r.status]?.includes(status)) {

@@ -14,6 +14,8 @@ interface ReviewData {
     id: number;
     rating: number;
     komentar: string;
+    balasan?: string | null;
+    balasanAt?: string | null;
     createdAt: string;
     member: {
       namaMember: string;
@@ -158,6 +160,22 @@ export function ReviewSection({ spaceId }: { spaceId: number }) {
                   ))}
                 </div>
                 <p className="text-ink/80 leading-relaxed font-[var(--font-abc-social)]">{review.komentar}</p>
+                {review.balasan && (
+                  <div className="mt-4 bg-stone-100 p-4 rounded-xl ml-4 sm:ml-8 border border-stone-200 relative">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-orange-500 rounded-l-xl"></div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full uppercase tracking-wider w-fit">
+                        Respon Pengelola Coworking
+                      </span>
+                      {review.balasanAt && (
+                        <span className="text-xs text-ink/40">
+                          {new Date(review.balasanAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-ink/70 leading-relaxed font-[var(--font-abc-social)] whitespace-pre-wrap">{review.balasan}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -29,6 +29,8 @@ model Review {
   komentar    String?      @db.Text
   tags        String[]
   fotoReview  ReviewFoto[]
+  balasan     String?      @db.Text
+  balasanAt   DateTime?    @map("balasan_at")
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -91,6 +93,7 @@ enum TipeSpace {
 
 enum StatusReservasi {
   belum_dikonfirm
+  menunggu_persetujuan
   disetujui
   aktif
   selesai

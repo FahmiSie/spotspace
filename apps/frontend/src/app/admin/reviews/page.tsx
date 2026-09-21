@@ -6,6 +6,10 @@ import { Star, MessageSquare, Building2, User, Loader2, ArrowUpDown, Filter, Sea
 import { format } from "date-fns";
 import Image from "next/image";
 import { getAssetUrl } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 
 interface AdminReviewData {
   reviews: any[];
@@ -20,6 +24,36 @@ interface AdminReviewData {
 export default function AdminReviewsPage() {
   const [data, setData] = useState<AdminReviewData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Reply State
+  const [replyReviewId, setReplyReviewId] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
+
+  const handleReplySubmit = async () => {
+    if (!replyReviewId || !replyText.trim()) return;
+    try {
+      setIsReplying(true);
+      const loadingToast = (toast as any).add({ title: "Sending reply...", type: "loading" });
+      const res = await api.post(`/reviews/admin/${replyReviewId}/reply`, { balasan: replyText });
+      
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          reviews: prev.reviews.map(r => r.id === replyReviewId ? { ...r, balasan: res.data.balasan, balasanAt: res.data.balasanAt || new Date().toISOString() } : r)
+        };
+      });
+
+      (toast as any).update(loadingToast, { title: "Reply sent successfully", type: "success" });
+      setReplyReviewId(null);
+      setReplyText("");
+    } catch (err: any) {
+      (toast as any).add({ title: "Failed to send reply", description: err.response?.data?.message || err.message, type: "error" });
+    } finally {
+      setIsReplying(false);
+    }
+  };
 
   // Filters
   const [selectedSpace, setSelectedSpace] = useState<number | "all">("all");
@@ -274,16 +308,78 @@ export default function AdminReviewsPage() {
                   <p className="text-ink/80 text-sm leading-relaxed whitespace-pre-wrap">{review.komentar}</p>
                 </div>
                 
-                <div className="pt-4 border-t border-stone-100">
+                <div className="pt-4 border-t border-stone-100 flex items-center justify-between">
                   <p className="text-xs text-ink/40 font-medium">
                     {format(new Date(review.createdAt), "dd MMM yyyy, HH:mm")}
                   </p>
+                  {!review.balasan ? (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-xs h-7 text-ink/60 hover:text-ink hover:bg-stone-100"
+                      onClick={() => {
+                        setReplyReviewId(review.id);
+                        setReplyText("");
+                      }}
+                    >
+                      Reply
+                    </Button>
+                  ) : null}
                 </div>
+
+                {review.balasan && (
+                  <div className="mt-4 p-4 bg-stone-50 rounded-xl border border-stone-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">Your Reply</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-ink/40">{review.balasanAt ? format(new Date(review.balasanAt), "dd MMM yyyy") : ""}</span>
+                        <button 
+                          className="text-xs text-ink/40 hover:text-ink underline"
+                          onClick={() => {
+                            setReplyReviewId(review.id);
+                            setReplyText(review.balasan);
+                          }}
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-sm text-ink/70 leading-relaxed whitespace-pre-wrap">{review.balasan}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <Dialog open={!!replyReviewId} onOpenChange={(v) => !v && setReplyReviewId(null)}>
+        <DialogContent className="sm:max-w-md rounded-2xl border-[#E5E5E5]">
+          <DialogHeader>
+            <DialogTitle>Reply to Review</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea 
+              placeholder="Write your response here..." 
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              className="min-h-[120px] rounded-xl border-[#E5E5E5] resize-none"
+            />
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" className="border-[#E5E5E5] text-[#0B0909]" />}>
+              Cancel
+            </DialogClose>
+            <Button
+              onClick={handleReplySubmit}
+              disabled={isReplying || !replyText.trim()}
+              className="bg-[#EF6905] hover:bg-[#EF6905]/90 text-white"
+            >
+              {isReplying ? "Sending..." : "Send Reply"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

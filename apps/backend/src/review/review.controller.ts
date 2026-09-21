@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseIntPipe, Post, Req, UseGuards } from
 import { AuthGuard } from '@nestjs/passport';
 import { ReviewService } from './review.service';
 import { CreateReviewDto } from './dto/create-review.dto';
+import { ReplyReviewDto } from './dto/reply-review.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
@@ -31,5 +32,16 @@ export class ReviewController {
   @Get('eligibility/:spaceId')
   checkEligibility(@Req() req: any, @Param('spaceId', ParseIntPipe) spaceId: number) {
     return this.reviewService.checkReviewEligibility(req.user.userId, spaceId);
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('admin_space')
+  @Post('admin/:id/reply')
+  replyReview(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+    @Body() dto: ReplyReviewDto
+  ) {
+    return this.reviewService.replyReview(id, req.user.spaceOwnerId, dto);
   }
 }

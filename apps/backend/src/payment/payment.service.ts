@@ -201,7 +201,7 @@ export class PaymentService {
             });
             await tx.reservasi.update({
               where: { id: reservasi.id },
-              data: { status: 'disetujui' },
+              data: { status: 'menunggu_persetujuan' },
             });
           });
         }
@@ -266,10 +266,10 @@ export class PaymentService {
         
         await tx.reservasi.update({
           where: { id: payment.reservasiId },
-          data: { status: 'disetujui' }
+          data: { status: 'menunggu_persetujuan' }
         });
       });
-      console.log(`Payment and Reservasi status updated to paid/disetujui for order ${order_id}`);
+      console.log(`Payment and Reservasi status updated to paid/menunggu_persetujuan for order ${order_id}`);
     } else if (transaction_status === 'cancel' || transaction_status === 'deny' || transaction_status === 'expire') {
       await this.prisma.$transaction(async (tx) => {
         await tx.payment.update({
@@ -323,7 +323,7 @@ export class PaymentService {
         });
         await tx.reservasi.update({
           where: { id: reservasi.id },
-          data: { status: 'disetujui' },
+          data: { status: 'menunggu_persetujuan' },
         });
       });
 

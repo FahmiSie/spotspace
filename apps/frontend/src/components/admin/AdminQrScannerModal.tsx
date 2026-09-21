@@ -102,7 +102,7 @@ export function AdminQrScannerModal({ isOpen, onClose, onSuccess }: AdminQrScann
       playBeep();
       const { data } = await api.post("/reservasi/admin/scan", { code });
       
-      const isCheckIn = data?.data?.action === 'check_in';
+      const isCheckIn = data?.action === 'check_in';
       const actionTitle = isCheckIn ? "CHECKED-IN" : "CHECKED-OUT";
       
       (toast as any).add({

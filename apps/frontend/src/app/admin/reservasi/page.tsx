@@ -23,10 +23,11 @@ import {
   useCheckOut,
 } from "@/lib/hooks/use-admin";
 
-type StatusReservasi = "belum_dikonfirm" | "disetujui" | "aktif" | "selesai" | "dibatalkan";
+type StatusReservasi = "belum_dikonfirm" | "menunggu_persetujuan" | "disetujui" | "aktif" | "selesai" | "dibatalkan";
 
 const STATUS_STYLES: Record<StatusReservasi, string> = {
-  belum_dikonfirm: "bg-[#FFF4E5] text-[#B86B11] border-[#B86B11]/20",
+  belum_dikonfirm: "bg-[#F3F4F6] text-[#6B7280] border-[#E5E7EB]",
+  menunggu_persetujuan: "bg-[#FFF4E5] text-[#B86B11] border-[#B86B11]/20",
   disetujui: "bg-[#E6F4EA] text-[#137333] border-[#137333]/20",
   aktif: "bg-[#E8F0FE] text-[#1967D2] border-[#1967D2]/20",
   selesai: "bg-[#F3F4F6] text-[#374151] border-[#E5E7EB]",
@@ -34,7 +35,8 @@ const STATUS_STYLES: Record<StatusReservasi, string> = {
 };
 
 const STATUS_LABELS: Record<StatusReservasi, string> = {
-  belum_dikonfirm: "Pending Approval",
+  belum_dikonfirm: "Unpaid",
+  menunggu_persetujuan: "Pending Approval",
   disetujui: "Approved",
   aktif: "Active",
   selesai: "Completed",
@@ -136,7 +138,7 @@ export default function AdminReservasiPage() {
     isPaid?: boolean;
   } | null>(null);
 
-  const pendingCount = data?.filter((r: any) => r.status === "belum_dikonfirm").length || 0;
+  const pendingCount = data?.filter((r: any) => r.status === "menunggu_persetujuan").length || 0;
 
   const filteredData = data?.filter((r: any) => {
     if (activeTab === "All") return true;
@@ -230,7 +232,7 @@ export default function AdminReservasiPage() {
               const st = row.status as StatusReservasi;
               return (
                 <div className="flex items-center gap-1 justify-end">
-                  {st === "belum_dikonfirm" && (
+                  {st === "menunggu_persetujuan" && (
                     <>
                       <Button
                         size="sm"
