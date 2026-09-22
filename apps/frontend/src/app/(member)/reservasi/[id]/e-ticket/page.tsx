@@ -13,7 +13,8 @@ import { toast } from "@/components/ui/toast";
 import { toPng } from "html-to-image";
 
 const STATUS_STYLES: Record<StatusReservasi, string> = {
-  belum_dikonfirm: "bg-[#E0A438]/10 text-[#E0A438] border-[#E0A438]/20",
+  belum_dikonfirm: "bg-[#FFF4E5] text-[#B86B11] border-[#B86B11]/20",
+  menunggu_persetujuan: "bg-amber-50 text-amber-800 border-amber-300/80",
   disetujui: "bg-[#2F5D50]/10 text-[#2F5D50] border-[#2F5D50]/20",
   aktif: "bg-[#3B5BA5]/10 text-[#3B5BA5] border-[#3B5BA5]/20",
   selesai: "bg-[#6B665A]/10 text-[#6B665A] border-[#6B665A]/20",
@@ -21,7 +22,8 @@ const STATUS_STYLES: Record<StatusReservasi, string> = {
 };
 
 const STATUS_LABELS: Record<StatusReservasi, string> = {
-  belum_dikonfirm: "Pending Approval",
+  belum_dikonfirm: "Awaiting Payment",
+  menunggu_persetujuan: "Pending Approval",
   disetujui: "Approved",
   aktif: "Active",
   selesai: "Completed",
@@ -134,8 +136,8 @@ export default function ETicketPage({ params }: { params: Promise<{ id: string }
 
         {/* Status Badge Overlap */}
         <div className="absolute top-[80px] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-          <span className={`px-4 py-1.5 rounded-full text-xs font-bold border shadow-sm bg-white ${STATUS_STYLES[ticket.status_reservasi]}`}>
-            {STATUS_LABELS[ticket.status_reservasi]}
+          <span className={`px-4 py-1.5 rounded-full text-xs font-bold border shadow-sm bg-white ${STATUS_STYLES[ticket.status_reservasi] || "bg-stone-100 text-stone-700 border-stone-300"}`}>
+            {STATUS_LABELS[ticket.status_reservasi] || (ticket.status_reservasi ? String(ticket.status_reservasi).replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : "Unknown")}
           </span>
         </div>
 

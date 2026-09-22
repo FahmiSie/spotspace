@@ -5,6 +5,7 @@ import { api } from "../api";
 
 export type StatusReservasi =
   | "belum_dikonfirm"
+  | "menunggu_persetujuan"
   | "disetujui"
   | "aktif"
   | "selesai"

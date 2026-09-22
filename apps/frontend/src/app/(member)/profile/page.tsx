@@ -95,7 +95,7 @@ export default function ProfilePage() {
   }
 
   const totalReservations = reservations?.length || 0;
-  const activeBookings = reservations?.filter(r => r.status === "aktif" || r.status === "disetujui" || r.status === "belum_dikonfirm").length || 0;
+  const activeBookings = reservations?.filter(r => r.status === "aktif" || r.status === "disetujui" || r.status === "belum_dikonfirm" || (r.status as string) === "menunggu_persetujuan").length || 0;
 
   return (
     <div className="min-h-screen bg-[#fafaf9] py-8">
